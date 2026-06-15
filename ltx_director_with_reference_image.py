@@ -516,8 +516,8 @@ class LTXDirectorWithReferenceImage(io.ComfyNode):
     @classmethod
     def define_schema(cls):
         return io.Schema(
-            node_id="LTXDirector",
-            display_name="LTX Director",
+            node_id="LTXDirectorWithReferenceImage",
+            display_name="LTX Director With Reference Image",
             category="WhatDreamsCost",
             description=(
                 "Same as Prompt Relay Encode, but local prompts and segment lengths are edited "
@@ -546,7 +546,7 @@ class LTXDirectorWithReferenceImage(io.ComfyNode):
                 io.Int.Input("divisible_by", default=32, min=1, max=256, step=1, tooltip="Snap the final output image dimensions to be divisible by this number (e.g. 32 for LTX)."),
                 io.Int.Input("img_compression", default=18, min=0, max=100, step=1, tooltip="H.264 CRF compression to apply to each guide image. 0 = no compression, higher = more artefacts."),
                 io.Boolean.Input("save_prompts_to_file", default=False, optional=True, tooltip="Save the timeline prompts and parameters to a text file in your ComfyUI output directory during execution."),
-                io.Image.Input("reference_image", optional=True, tooltip="Invisible character sheet/style reference. Can also be a Batch of images. Automatically appended to the sequence out-of-bounds."),
+                io.Image.Input("reference_image_1", optional=True, tooltip="Invisible character sheet/style reference. Can also be a Batch of images. Automatically appended to the sequence out-of-bounds."),
                 io.Image.Input("reference_image_2", optional=True, tooltip="Second optional reference image."),
                 io.Image.Input("reference_image_3", optional=True, tooltip="Third optional reference image."),
                 io.Float.Input("reference_strength", default=1.0, min=0.0, max=5.0, step=0.05, optional=True, tooltip="Guide strength for the reference images."),
@@ -571,7 +571,7 @@ class LTXDirectorWithReferenceImage(io.ComfyNode):
                 custom_width=768, custom_height=512, resize_method="maintain aspect ratio",
                 divisible_by=32, img_compression=0, audio_vae=None, optional_latent=None,
                 use_custom_audio=False, save_prompts_to_file=False,
-                reference_image=None, reference_image_2=None, reference_image_3=None, reference_strength=1.0) -> io.NodeOutput:
+                reference_image_1=None, reference_image_2=None, reference_image_3=None, reference_strength=1.0) -> io.NodeOutput:
 
         # --- Calculate Clean Output Bounds First ---
         clean_pixel_frames = duration_frames + 1
@@ -583,7 +583,7 @@ class LTXDirectorWithReferenceImage(io.ComfyNode):
         
         # Consolidate all reference inputs into a flat list, unraveling any image batches.
         refs_to_process = []
-        for ref_input in (reference_image, reference_image_2, reference_image_3):
+        for ref_input in (reference_image_1, reference_image_2, reference_image_3):
             if ref_input is not None:
                 for i in range(ref_input.shape[0]):
                     refs_to_process.append(ref_input[i:i+1])
