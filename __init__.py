@@ -7,6 +7,7 @@ from .load_video_ui import LoadVideoUI
 from .ltx_director import LTXDirector
 from .ltx_director_with_reference_image import LTXDirectorWithReferenceImage
 from .ltx_director_guide import LTXDirectorGuide
+from .latent_slice import CleanLatentSlice
 from comfy_api.latest import ComfyExtension, io
 from typing_extensions import override
 
@@ -32,6 +33,7 @@ NODE_CLASS_MAPPINGS = {
     "LTXDirector": LTXDirector,
     "LTXDirectorWithReferenceImage": LTXDirectorWithReferenceImage,
     "LTXDirectorGuide": LTXDirectorGuide,
+    "CleanLatentSlice": CleanLatentSlice,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -44,6 +46,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LTXDirector": "LTX Director",
     "LTXDirectorWithReferenceImage": "LTX Director With Reference Image",
     "LTXDirectorGuide": "LTX Director Guide",
+    "CleanLatentSlice": "Clean Latent Slice",
 }
 
 WEB_DIRECTORY = "./js"
