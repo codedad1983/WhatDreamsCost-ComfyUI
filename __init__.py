@@ -5,6 +5,7 @@ from .speech_length_calculator import SpeechLengthCalculator
 from .load_audio_ui import LoadAudioUI
 from .load_video_ui import LoadVideoUI
 from .ltx_director import LTXDirector
+from .ltx_director_with_reference_image import LTXDirectorWithReferenceImage
 from .ltx_director_guide import LTXDirectorGuide
 from comfy_api.latest import ComfyExtension, io
 from typing_extensions import override
@@ -14,6 +15,7 @@ class PromptRelay(ComfyExtension):
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
         return [
             LTXDirector,
+            LTXDirectorWithReferenceImage,
             LTXDirectorGuide
         ]
 
@@ -28,6 +30,7 @@ NODE_CLASS_MAPPINGS = {
     "LoadAudioUI": LoadAudioUI,
     "LoadVideoUI": LoadVideoUI,
     "LTXDirector": LTXDirector,
+    "LTXDirectorWithReferenceImage": LTXDirectorWithReferenceImage,
     "LTXDirectorGuide": LTXDirectorGuide,
 }
 
@@ -39,6 +42,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LoadAudioUI": "Load Audio UI",
     "LoadVideoUI": "Load Video UI",
     "LTXDirector": "LTX Director",
+    "LTXDirectorWithReferenceImage": "LTX Director With Reference Image",
     "LTXDirectorGuide": "LTX Director Guide",
 }
 
