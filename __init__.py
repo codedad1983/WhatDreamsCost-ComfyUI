@@ -6,6 +6,7 @@ from .load_audio_ui import LoadAudioUI
 from .load_video_ui import LoadVideoUI
 from .ltx_director import LTXDirector
 from .ltx_director_with_reference_image import LTXDirectorWithReferenceImage
+from .ltx_director_with_more_output import LTXDirectorWithMoreOutput
 from .ltx_director_guide import LTXDirectorGuide
 from .latent_slice import CleanLatentSlice
 from comfy_api.latest import ComfyExtension, io
@@ -17,6 +18,7 @@ class PromptRelay(ComfyExtension):
         return [
             LTXDirector,
             LTXDirectorWithReferenceImage,
+            LTXDirectorWithMoreOutput,
             LTXDirectorGuide
         ]
 
@@ -32,6 +34,7 @@ NODE_CLASS_MAPPINGS = {
     "LoadVideoUI": LoadVideoUI,
     "LTXDirector": LTXDirector,
     "LTXDirectorWithReferenceImage": LTXDirectorWithReferenceImage,
+    "LTXDirectorWithMoreOutput": LTXDirectorWithMoreOutput,
     "LTXDirectorGuide": LTXDirectorGuide,
     "CleanLatentSlice": CleanLatentSlice,
 }
@@ -45,6 +48,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LoadVideoUI": "Load Video UI",
     "LTXDirector": "LTX Director",
     "LTXDirectorWithReferenceImage": "LTX Director With Reference Image",
+    "LTXDirectorWithMoreOutput": "LTX Director With More Output",
     "LTXDirectorGuide": "LTX Director Guide",
     "CleanLatentSlice": "Clean Latent Slice",
 }
