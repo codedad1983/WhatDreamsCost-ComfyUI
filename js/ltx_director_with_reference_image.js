@@ -970,7 +970,7 @@ class TimelineEditor {
     helpBtn.title = "Help / Documentation";
     helpBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      window.open("https://github.com/WhatDreamsCost/WhatDreamsCost-ComfyUI", "_blank");
+      window.open("https://github.com/codedad1983/WhatDreamsCost-ComfyUI", "_blank");
     });
 
     const btnGroup = document.createElement("div");

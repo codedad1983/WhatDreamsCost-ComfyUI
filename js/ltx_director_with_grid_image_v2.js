@@ -10,7 +10,164 @@ const HANDLE_HIT_PX = 14;
 const MIN_SEGMENT_LENGTH = 6;
 const MAX_THUMBNAIL_DIM = 512; // Increased to maintain quality for taller images
 
-const HIDDEN_WIDGET_NAMES = ["timeline_data", "local_prompts", "segment_lengths", "guide_strength", "audio_data", "use_custom_audio"];
+const HIDDEN_WIDGET_NAMES = ["timeline_data", "local_prompts", "segment_lengths", "guide_strength", "audio_data", "use_custom_audio", "resize_method"];
+
+const ZH = {
+  addImage: "\u6dfb\u52a0\u56fe\u7247",
+  autoFillGrid: "\u81ea\u52a8\u586b\u5145\u5bab\u683c",
+  autoFillGridTitle: "\u4ece\u5df2\u8fde\u63a5\u7684\u5bab\u683c\u5206\u955c\u56fe\u521b\u5efa 4/6/9 \u4e2a\u53ef\u7f16\u8f91\u65f6\u95f4\u7ebf\u7247\u6bb5\u3002",
+  syncText: "\u540c\u6b65\u6587\u672c",
+  syncTextTitle: "\u5c06\u5df2\u8fd0\u884c\u7684 GPT response \u540c\u6b65\u5230\u5f53\u524d\u5bab\u683c\u5206\u955c\u6587\u672c\uff0c\u4fdd\u7559\u624b\u52a8\u4fee\u6539\u3002",
+  addAudio: "\u6dfb\u52a0\u97f3\u9891",
+  addText: "\u6dfb\u52a0\u6587\u5b57",
+  delete: "\u5220\u9664",
+  start: "\u5f00\u59cb",
+  end: "\u7ed3\u675f",
+  settings: "\u8bbe\u7f6e",
+  customAudioOff: "\u81ea\u5b9a\u4e49\u97f3\u9891\uff1a\u5173",
+  customAudioOn: "\u81ea\u5b9a\u4e49\u97f3\u9891\uff1a\u5f00",
+  toggleCustomAudio: "\u5f00\u5173\u81ea\u5b9a\u4e49\u97f3\u9891\u8f93\u51fa",
+  help: "\u5e2e\u52a9 / \u6587\u6863",
+  promptPlaceholder: "\u8f93\u5165\u5f53\u524d\u5206\u955c\u63d0\u793a\u8bcd...",
+  playPauseAudio: "\u64ad\u653e/\u6682\u505c\u97f3\u9891",
+  toggleLoop: "\u5faa\u73af\u64ad\u653e",
+  zoomOut: "\u7f29\u5c0f",
+  zoomLevel: "\u7f29\u653e\u7ea7\u522b",
+  zoomIn: "\u653e\u5927",
+  zoomFit: "\u9002\u914d\u6574\u6761\u65f6\u95f4\u7ebf",
+  guideStrength: "\u5f15\u5bfc\u5f3a\u5ea6\uff1a",
+  frameSuffix: " \u5e27",
+  file: "\u6587\u4ef6",
+  unknown: "\u672a\u77e5",
+  length: "\u957f\u5ea6",
+  outputLength: "\u8f93\u51fa\u957f\u5ea6",
+  trimIn: "\u88c1\u5165",
+  trimOut: "\u88c1\u51fa",
+  noPrompt: "(\u65e0\u63d0\u793a\u8bcd)",
+  dropToPlace: "\u62d6\u653e\u5230\u6b64\u5904",
+  dropAudio: "\u62d6\u653e\u97f3\u9891",
+  audioTrack: "\u97f3\u9891\u8f68\u9053",
+  copyImage: "\u590d\u5236\u56fe\u7247",
+  saveImage: "\u4fdd\u5b58\u56fe\u7247",
+  openImage: "\u65b0\u6807\u7b7e\u6253\u5f00\u56fe\u7247",
+  copyPrompt: "\u590d\u5236\u63d0\u793a\u8bcd",
+  copySegment: "\u590d\u5236\u7247\u6bb5",
+  pasteReplace: "\u7c98\u8d34\u5e76\u66ff\u6362",
+  pasteSegment: "\u7c98\u8d34\u7247\u6bb5",
+  textSegment: "\u6587\u5b57\u7247\u6bb5",
+  imageSegment: "\u56fe\u7247\u7247\u6bb5",
+  timelineSettings: "\u65f6\u95f4\u7ebf\u8bbe\u7f6e",
+  closeSettings: "\u5173\u95ed\u8bbe\u7f6e",
+  frames: "\u5e27",
+  seconds: "\u79d2",
+  displayMode: "\u65f6\u95f4\u663e\u793a",
+  epsilon: "\u5206\u6bb5\u8fb9\u754c\u9510\u5ea6",
+  divisibleBy: "\u5c3a\u5bf8\u6574\u9664",
+  imgCompression: "\u56fe\u50cf\u538b\u7f29",
+  useGlobalPrompt: "\u4f7f\u7528\u5168\u5c40\u63d0\u793a\u8bcd",
+  hideWidgets: "\u9690\u85cf\u8282\u70b9\u53c2\u6570",
+  showWidgets: "\u663e\u793a\u8282\u70b9\u53c2\u6570",
+};
+
+function prNormalizeDisplayMode(value) {
+  return value === "frames" || value === ZH.frames ? "frames" : "seconds";
+}
+
+function prDisplayModeValue(mode) {
+  return mode === "frames" ? ZH.frames : ZH.seconds;
+}
+
+const SIX_GRID_INPUT_LABELS = {
+  model: "\u6a21\u578b",
+  clip: "\u6587\u672c\u7f16\u7801\u5668",
+  storyboard_images: "\u5bab\u683c\u56fe\u50cf",
+  grid_mode: "\u5bab\u683c\u6a21\u5f0f",
+  shot_aspect: "\u5206\u955c\u6bd4\u4f8b",
+  border_crop: "\u767d\u8fb9\u88c1\u526a\u5f3a\u5ea6",
+  llm_response: "GPT \u5206\u955c\u6587\u672c",
+  audio_vae: "\u97f3\u9891 VAE",
+  optional_latent: "\u53ef\u9009\u6f5c\u7a7a\u95f4",
+  global_prompt: "\u5168\u5c40\u63d0\u793a\u8bcd",
+  duration_frames: "\u603b\u5e27\u6570",
+  duration_seconds: "\u603b\u79d2\u6570",
+  timeline_data: "\u65f6\u95f4\u7ebf\u6570\u636e",
+  use_custom_audio: "\u4f7f\u7528\u81ea\u5b9a\u4e49\u97f3\u9891",
+  local_prompts: "\u5206\u955c\u63d0\u793a\u8bcd",
+  segment_lengths: "\u6bcf\u6bb5\u5e27\u6570",
+  epsilon: "\u5206\u6bb5\u8fb9\u754c\u9510\u5ea6",
+  frame_rate: "\u5e27\u7387",
+  display_mode: "\u65f6\u95f4\u663e\u793a",
+  guide_strength: "\u56fe\u50cf\u5f15\u5bfc\u5f3a\u5ea6",
+  parse_mode: "\u6587\u672c\u89e3\u6790\u65b9\u5f0f",
+  custom_width: "\u8f93\u51fa\u5bbd\u5ea6",
+  custom_height: "\u8f93\u51fa\u9ad8\u5ea6",
+  resize_method: "\u56fe\u50cf\u9002\u914d\u65b9\u5f0f",
+  divisible_by: "\u5c3a\u5bf8\u6574\u9664",
+  img_compression: "\u56fe\u50cf\u538b\u7f29",
+};
+
+const SIX_GRID_OUTPUT_LABELS = {
+  model: "\u6a21\u578b",
+  positive: "\u6b63\u5411\u6761\u4ef6",
+  video_latent: "\u89c6\u9891\u6f5c\u7a7a\u95f4",
+  audio_latent: "\u97f3\u9891\u6f5c\u7a7a\u95f4",
+  guide_data: "\u5f15\u5bfc\u6570\u636e",
+  frame_rate: "\u5e27\u7387",
+  combined_audio: "\u5408\u6210\u97f3\u9891",
+};
+
+const SIX_GRID_COMBO_VALUE_LABELS = {
+  grid_mode: {
+    "2x2": "2x2 \u56db\u5bab\u683c",
+    "2x2 \u56db\u5bab\u683c": "2x2 \u56db\u5bab\u683c",
+    "\u56db\u5bab\u683c": "2x2 \u56db\u5bab\u683c",
+    "3x2": "3x2 \u516d\u5bab\u683c",
+    "2x3": "3x2 \u516d\u5bab\u683c",
+    "3x2 \u516d\u5bab\u683c": "3x2 \u516d\u5bab\u683c",
+    "2x3 \u516d\u5bab\u683c": "3x2 \u516d\u5bab\u683c",
+    "\u516d\u5bab\u683c": "3x2 \u516d\u5bab\u683c",
+    "3x3": "3x3 \u4e5d\u5bab\u683c",
+    "3x3 \u4e5d\u5bab\u683c": "3x3 \u4e5d\u5bab\u683c",
+    "\u4e5d\u5bab\u683c": "3x3 \u4e5d\u5bab\u683c",
+  },
+  shot_aspect: {
+    auto: "\u81ea\u52a8 / \u4fdd\u6301\u5355\u683c\u6bd4\u4f8b",
+    "\u81ea\u52a8": "\u81ea\u52a8 / \u4fdd\u6301\u5355\u683c\u6bd4\u4f8b",
+    "\u81ea\u52a8 / \u4fdd\u6301\u5355\u683c\u6bd4\u4f8b": "\u81ea\u52a8 / \u4fdd\u6301\u5355\u683c\u6bd4\u4f8b",
+    "16:9": "16:9 \u6a2a\u5c4f",
+    "16:9 \u6a2a\u5c4f": "16:9 \u6a2a\u5c4f",
+    "\u6a2a\u5c4f": "16:9 \u6a2a\u5c4f",
+    "9:16": "9:16 \u7ad6\u5c4f",
+    "9:16 \u7ad6\u5c4f": "9:16 \u7ad6\u5c4f",
+    "\u7ad6\u5c4f": "9:16 \u7ad6\u5c4f",
+    "1:1": "1:1 \u65b9\u56fe",
+    "1:1 \u65b9\u56fe": "1:1 \u65b9\u56fe",
+    "\u65b9\u56fe": "1:1 \u65b9\u56fe",
+  },
+  display_mode: {
+    seconds: ZH.seconds,
+    frames: ZH.frames,
+  },
+  parse_mode: {
+    auto: "\u81ea\u52a8",
+    json: "JSON",
+    numbered_text: "\u7f16\u53f7\u6587\u672c",
+  },
+  resize_method: {
+    "maintain aspect ratio": "\u4fdd\u6301\u6bd4\u4f8b",
+    "stretch to fit": "\u62c9\u4f38\u586b\u6ee1",
+    pad: "\u7559\u767d\u586b\u5145",
+    crop: "\u88c1\u526a\u586b\u6ee1",
+  },
+};
+
+const SIX_GRID_COMBO_CANONICAL_VALUES = {
+  grid_mode: ["2x2 \u56db\u5bab\u683c", "3x2 \u516d\u5bab\u683c", "3x3 \u4e5d\u5bab\u683c"],
+  shot_aspect: ["\u81ea\u52a8 / \u4fdd\u6301\u5355\u683c\u6bd4\u4f8b", "16:9 \u6a2a\u5c4f", "9:16 \u7ad6\u5c4f", "1:1 \u65b9\u56fe"],
+  display_mode: [ZH.seconds, ZH.frames],
+  parse_mode: ["\u81ea\u52a8", "JSON", "\u7f16\u53f7\u6587\u672c"],
+  resize_method: ["\u4fdd\u6301\u6bd4\u4f8b", "\u62c9\u4f38\u586b\u6ee1", "\u7559\u767d\u586b\u5145", "\u88c1\u526a\u586b\u6ee1"],
+};
 
 function hideWidget(w) {
   if (!w) return;
@@ -22,6 +179,27 @@ function hideWidget(w) {
   w.options.hidden = true;
   w.computeSize = () => [0, 0];
   if (w.element) w.element.style.display = "none";
+}
+
+function prHideSixGridInternalWidgets(node) {
+  if (!prIsSixGridDirector(node)) return;
+  for (const w of node.widgets || []) {
+    if (HIDDEN_WIDGET_NAMES.includes(w.name)) hideWidget(w);
+  }
+}
+
+function prRepairNumberWidget(node, name, fallback, min = null, max = null, integer = false) {
+  const widget = prGetWidget(node, name);
+  if (!widget) return fallback;
+  let value = Number(widget.value);
+  const invalid =
+    !Number.isFinite(value) ||
+    (min !== null && value < min) ||
+    (max !== null && value > max);
+  if (invalid) value = fallback;
+  if (integer) value = Math.round(value);
+  widget.value = value;
+  return value;
 }
 
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
@@ -541,6 +719,528 @@ const ICONS = {
   close: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`
 };
 
+const SIX_GRID_MAX_SEGMENTS = 9;
+
+function prGetWidget(node, name) {
+  return node.widgets?.find((w) => w.name === name);
+}
+
+function prGetWidgetValue(node, name, fallback = "") {
+  const widget = prGetWidget(node, name);
+  return widget?.value ?? fallback;
+}
+
+function prGetWidgetValueAny(node, names, index, fallback = "") {
+  for (const name of names || []) {
+    const value = prGetWidgetValue(node, name, undefined);
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+
+  const widgetValue = node?.widgets?.[index]?.value;
+  if (widgetValue !== undefined && widgetValue !== null && widgetValue !== "") return widgetValue;
+
+  const serializedValues = node?.widgets_values || node?.widgetsValues || node?.widget_values;
+  const serializedValue = Array.isArray(serializedValues) ? serializedValues[index] : undefined;
+  if (serializedValue !== undefined && serializedValue !== null && serializedValue !== "") return serializedValue;
+
+  return fallback;
+}
+
+function prTextValue(value) {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") return "";
+  try {
+    return JSON.stringify(value);
+  } catch (_) {
+    return String(value || "").trim();
+  }
+}
+
+function prReadWidgetTextByName(node, names = []) {
+  const wanted = new Set(names.map((name) => String(name).toLowerCase()));
+  for (const widget of node?.widgets || []) {
+    const name = String(widget?.name || "").toLowerCase();
+    const label = String(widget?.label || "").toLowerCase();
+    if (!wanted.has(name) && !wanted.has(label)) continue;
+    const text = prTextValue(widget.value);
+    if (text) return text;
+  }
+  return "";
+}
+
+function prReadSerializedWidgetText(node, index = 0) {
+  const serializedValues = node?.widgets_values || node?.widgetsValues || node?.widget_values;
+  if (!Array.isArray(serializedValues)) return "";
+  return prTextValue(serializedValues[index]);
+}
+
+function prLooksLikeTextDisplayNode(node) {
+  const nodeType = String(node?.type || node?.comfyClass || "").toLowerCase();
+  const title = String(node?.title || node?.properties?.["Node name for S&R"] || "").toLowerCase();
+  const combined = `${nodeType} ${title}`;
+  return /(show|display|preview|anything|note|text|string)/i.test(combined);
+}
+
+function prReadTextFromConnectedNode(node) {
+  if (!node) return "";
+  const preferredNames = [
+    "output", "text", "string", "strings", "response", "result", "message",
+    "anything", "value", "\u8f93\u51fa", "\u6587\u672c", "\u5185\u5bb9", "\u7ed3\u679c",
+  ];
+  const namedText = prReadWidgetTextByName(node, preferredNames);
+  if (namedText) return namedText;
+
+  if (prLooksLikeTextDisplayNode(node)) {
+    for (const widget of node.widgets || []) {
+      const text = prTextValue(widget?.value);
+      if (text) return text;
+    }
+    const serializedText = prReadSerializedWidgetText(node, 0);
+    if (serializedText) return serializedText;
+  }
+  return "";
+}
+
+function prGetConnectedInputText(node, inputName, fallback = "") {
+  const origin = prGetOriginNode(node, inputName);
+  const originText = prReadTextFromConnectedNode(origin);
+  if (originText) return originText;
+
+  const direct = prTextValue(prGetWidgetValue(node, inputName, ""));
+  if (direct) return direct;
+
+  return prTextValue(fallback);
+}
+
+function prCloneTimelineForPreview(segments = []) {
+  return (segments || []).map((seg) => {
+    const {
+      imgObj,
+      imageB64,
+      audioBuffer,
+      audioB64,
+      decodedAudioBuffer,
+      ...rest
+    } = seg || {};
+    return { ...rest };
+  });
+}
+
+function prSegmentForTimelineSave(seg = {}) {
+  const { imgObj, ...rest } = seg;
+  if (rest.source === "storyboard_images") {
+    delete rest.imageB64;
+  }
+  return rest;
+}
+
+function prNormalizeImageWidgetValue(value) {
+  if (!value) return { filename: "", subfolder: "", type: "" };
+  if (typeof value === "object") {
+    return {
+      filename: value.filename || value.name || value.image || value.path || "",
+      subfolder: value.subfolder || "",
+      type: value.type || "",
+    };
+  }
+  return { filename: String(value), subfolder: "", type: "" };
+}
+
+const SIX_GRID_NODE_TYPES = ["LTXDirectorWithGridImageV2"];
+const BORDER_CROP_BASE_FRACTION = 0.015;
+
+function prIsSixGridDirector(node) {
+  return SIX_GRID_NODE_TYPES.includes(node?.comfyClass) || SIX_GRID_NODE_TYPES.includes(node?.type);
+}
+
+function prSetLiteGraphLabel(item, label) {
+  if (!item || !label) return;
+  item.label = label;
+  item.localized_name = label;
+  if (item.options) {
+    item.options.label = label;
+    item.options.display_name = label;
+  }
+}
+
+function prApplySixGridChineseLabels(node) {
+  if (!prIsSixGridDirector(node)) return;
+  node.title = node.title || "LTX Director With Grid Image V2";
+  for (const input of node.inputs || []) {
+    prSetLiteGraphLabel(input, SIX_GRID_INPUT_LABELS[input.name]);
+  }
+  for (const output of node.outputs || []) {
+    prSetLiteGraphLabel(output, SIX_GRID_OUTPUT_LABELS[output.name]);
+  }
+  for (const widget of node.widgets || []) {
+    prSetLiteGraphLabel(widget, SIX_GRID_INPUT_LABELS[widget.name]);
+    const valueLabels = SIX_GRID_COMBO_VALUE_LABELS[widget.name];
+    if (valueLabels) {
+      if (!widget.options) widget.options = {};
+      widget.options.values = SIX_GRID_COMBO_CANONICAL_VALUES[widget.name] || Array.from(new Set(Object.values(valueLabels)));
+      if (Object.prototype.hasOwnProperty.call(valueLabels, widget.value)) {
+        widget.value = valueLabels[widget.value];
+      }
+    }
+  }
+  node.setDirtyCanvas?.(true, true);
+}
+
+function prRepairSixGridWidgetValues(node) {
+  if (!prIsSixGridDirector(node)) return;
+
+  const gridModeWidget = prGetWidget(node, "grid_mode");
+  if (gridModeWidget && !SIX_GRID_COMBO_CANONICAL_VALUES.grid_mode.includes(gridModeWidget.value)) {
+    gridModeWidget.value = SIX_GRID_COMBO_VALUE_LABELS.grid_mode[gridModeWidget.value] || "3x2 \u516d\u5bab\u683c";
+  }
+
+  const shotAspectWidget = prGetWidget(node, "shot_aspect");
+  if (shotAspectWidget && !SIX_GRID_COMBO_CANONICAL_VALUES.shot_aspect.includes(shotAspectWidget.value)) {
+    shotAspectWidget.value = SIX_GRID_COMBO_VALUE_LABELS.shot_aspect[shotAspectWidget.value] || "\u81ea\u52a8 / \u4fdd\u6301\u5355\u683c\u6bd4\u4f8b";
+  }
+
+  const resizeMethodWidget = prGetWidget(node, "resize_method");
+  if (resizeMethodWidget && !SIX_GRID_COMBO_CANONICAL_VALUES.resize_method.includes(resizeMethodWidget.value)) {
+    resizeMethodWidget.value = SIX_GRID_COMBO_VALUE_LABELS.resize_method[resizeMethodWidget.value] || "\u4fdd\u6301\u6bd4\u4f8b";
+  }
+
+  const durationFrames = prRepairNumberWidget(node, "duration_frames", 120, 1, 10000, true);
+  const frameRate = prRepairNumberWidget(node, "frame_rate", 24, 1, 240, false);
+
+  const durationSecondsWidget = prGetWidget(node, "duration_seconds");
+  const durationSeconds = Number(durationSecondsWidget?.value);
+  if (durationSecondsWidget && (!Number.isFinite(durationSeconds) || durationSeconds <= 0 || durationSeconds > 1000)) {
+    durationSecondsWidget.value = parseFloat((durationFrames / frameRate).toFixed(3));
+  }
+
+  prRepairNumberWidget(node, "custom_width", 0, 0, 8192, true);
+  prRepairNumberWidget(node, "custom_height", 0, 0, 8192, true);
+  prRepairNumberWidget(node, "divisible_by", 32, 1, 256, true);
+  prRepairNumberWidget(node, "img_compression", 18, 0, 100, true);
+
+  const epsilonWidget = prGetWidget(node, "epsilon");
+  const epsilon = Number(epsilonWidget?.value);
+  if (epsilonWidget && (!Number.isFinite(epsilon) || epsilon <= 0)) {
+    epsilonWidget.value = 0.001;
+  }
+
+  const displayModeWidget = prGetWidget(node, "display_mode");
+  if (displayModeWidget && !["seconds", "frames", ZH.seconds, ZH.frames].includes(displayModeWidget.value)) {
+    displayModeWidget.value = ZH.seconds;
+  }
+
+  const guideStrengthWidget = prGetWidget(node, "guide_strength");
+  if (guideStrengthWidget && (guideStrengthWidget.value === undefined || guideStrengthWidget.value === null || guideStrengthWidget.value === "")) {
+    guideStrengthWidget.value = "1.0";
+  }
+
+  prRepairNumberWidget(node, "border_crop", 1.0, 0, 5, false);
+}
+
+function prGridDimensionsFromMode(value) {
+  const mode = String(value || "");
+  if (mode.includes("2x2") || mode.includes("\u56db\u5bab\u683c")) return { cols: 2, rows: 2 };
+  if (mode.includes("3x3") || mode.includes("\u4e5d\u5bab\u683c")) return { cols: 3, rows: 3 };
+  return { cols: 3, rows: 2 };
+}
+
+function prGetGridDimensions(node) {
+  return prGridDimensionsFromMode(prGetWidgetValue(node, "grid_mode", "3x2 \u516d\u5bab\u683c"));
+}
+
+function prShotAspectRatioFromValue(value) {
+  const mode = String(value || "");
+  if (mode.includes("16:9") || mode.includes("\u6a2a\u5c4f")) return 16 / 9;
+  if (mode.includes("9:16") || mode.includes("\u7ad6\u5c4f")) return 9 / 16;
+  if (mode.includes("1:1") || mode.includes("\u65b9\u56fe")) return 1;
+  return null;
+}
+
+function prGetShotCropOptions(node) {
+  const rawStrength = Number(prGetWidgetValue(node, "border_crop", 1.0));
+  return {
+    targetRatio: prShotAspectRatioFromValue(prGetWidgetValue(node, "shot_aspect", "")),
+    borderCropStrength: Math.max(0, Math.min(5, Number.isFinite(rawStrength) ? rawStrength : 1.0)),
+  };
+}
+
+function prGridCropBounds(width, height, idx, cols, rows, borderCropStrength, targetRatio) {
+  cols = Math.max(1, Math.round(Number(cols) || 1));
+  rows = Math.max(1, Math.round(Number(rows) || 1));
+  const col = idx % cols;
+  const row = Math.floor(idx / cols);
+  const cellW = Math.max(1, Math.floor(width / cols));
+  const cellH = Math.max(1, Math.floor(height / rows));
+  let sx = col * cellW;
+  let sy = row * cellH;
+  let sx2 = sx + cellW;
+  let sy2 = sy + cellH;
+  const inset = Math.round(Math.min(cellW, cellH) * BORDER_CROP_BASE_FRACTION * borderCropStrength);
+  if (inset > 0 && cellW > inset * 2 + 2 && cellH > inset * 2 + 2) {
+    sx += inset;
+    sx2 -= inset;
+    sy += inset;
+    sy2 -= inset;
+  }
+
+  if (targetRatio && targetRatio > 0) {
+    const cropW = Math.max(1, sx2 - sx);
+    const cropH = Math.max(1, sy2 - sy);
+    const currentRatio = cropW / cropH;
+    if (currentRatio > targetRatio) {
+      const newW = Math.max(1, Math.round(cropH * targetRatio));
+      const offset = Math.max(0, Math.floor((cropW - newW) / 2));
+      sx += offset;
+      sx2 = sx + newW;
+    } else if (currentRatio < targetRatio) {
+      const newH = Math.max(1, Math.round(cropW / targetRatio));
+      const offset = Math.max(0, Math.floor((cropH - newH) / 2));
+      sy += offset;
+      sy2 = sy + newH;
+    }
+  }
+
+  sx = Math.max(0, Math.min(width - 1, sx));
+  sy = Math.max(0, Math.min(height - 1, sy));
+  sx2 = Math.max(sx + 1, Math.min(width, sx2));
+  sy2 = Math.max(sy + 1, Math.min(height, sy2));
+  return { sx, sy, sw: Math.max(1, sx2 - sx), sh: Math.max(1, sy2 - sy) };
+}
+
+function prGetGraphLink(linkId) {
+  if (linkId == null) return null;
+  const links = app.graph?.links;
+  if (!links) return null;
+  if (links[linkId]) return links[linkId];
+  if (Array.isArray(links)) return links.find((link) => link?.id === linkId || link?.[0] === linkId) || null;
+  return null;
+}
+
+function prGetOriginNode(node, inputName) {
+  const input = node.inputs?.find((item) => item.name === inputName);
+  const link = prGetGraphLink(input?.link);
+  if (!link) return null;
+  const originId = link.origin_id ?? link.originId ?? link[1];
+  return app.graph?.getNodeById?.(originId) || null;
+}
+
+function prIsLoadImageNode(node) {
+  const nodeType = node?.type || node?.comfyClass || "";
+  return nodeType === "LoadImage" || nodeType === "LoadImageMask" || !!prGetWidget(node, "image") || !!prGetWidget(node, "\u56fe\u50cf");
+}
+
+function prLoadImageUrl(loadNode) {
+  const fileInfo = prNormalizeImageWidgetValue(prGetWidgetValueAny(loadNode, ["image", "\u56fe\u50cf"], 0, ""));
+  const filename = fileInfo.filename;
+  if (!filename) return "";
+  const parts = String(filename).split(/[\\/]/);
+  const base = parts.pop();
+  const subfolder = fileInfo.subfolder || parts.join("/");
+  const rawType = String(fileInfo.type || prGetWidgetValueAny(loadNode, ["type", "\u7c7b\u578b"], 1, "input") || "input").toLowerCase();
+  const viewType = ["input", "output", "temp"].includes(rawType) ? rawType : "input";
+  return api.apiURL(`/view?filename=${encodeURIComponent(base)}&type=${encodeURIComponent(viewType)}&subfolder=${encodeURIComponent(subfolder)}`);
+}
+
+function prGetSixGridSource(node) {
+  const splitNode = prGetOriginNode(node, "storyboard_images");
+  if (!splitNode) return null;
+  const selectedGrid = prGetGridDimensions(node);
+
+  if (prIsLoadImageNode(splitNode)) {
+    return { cols: selectedGrid.cols, rows: selectedGrid.rows, url: prLoadImageUrl(splitNode) };
+  }
+
+  const imageLink = prGetGraphLink(splitNode.inputs?.[0]?.link);
+  if (!imageLink) return { cols: selectedGrid.cols, rows: selectedGrid.rows, url: "" };
+  const originId = imageLink.origin_id ?? imageLink.originId ?? imageLink[1];
+  const imageNode = app.graph?.getNodeById?.(originId);
+  if (!imageNode) return { cols: selectedGrid.cols, rows: selectedGrid.rows, url: "" };
+
+  const url = prIsLoadImageNode(imageNode) ? prLoadImageUrl(imageNode) : "";
+  if (!url) {
+    console.warn("[LTX Grid Director] Could not resolve source image URL for grid preview.", {
+      splitNodeId: splitNode.id,
+      imageNodeId: imageNode.id,
+      imageNodeType: imageNode.type || imageNode.comfyClass,
+      widgets: imageNode.widgets?.map((w) => ({ name: w.name, value: w.value })),
+      widgets_values: imageNode.widgets_values,
+    });
+  }
+  return { cols: selectedGrid.cols, rows: selectedGrid.rows, url };
+}
+
+function prStripFence(text) {
+  text = String(text || "").trim();
+  if (text.startsWith("```")) {
+    text = text.replace(/^```(?:json|JSON)?\s*/, "").replace(/\s*```$/, "");
+  }
+  return text.trim();
+}
+
+function prFirstJson(text) {
+  text = prStripFence(text);
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] !== "[" && text[i] !== "{") continue;
+    try {
+      return JSON.parse(text.slice(i));
+    } catch (_) {
+      continue;
+    }
+  }
+  return null;
+}
+
+function prCleanPrompt(prompt) {
+  const numerals = "\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341";
+  const marker = new RegExp(`^\\s*(?:\\u5206\\u955c|\\u955c\\u5934|\\u753b\\u9762|shot)\\s*[${numerals}\\d]+\\s*[:\\uff1a.\\-\\u3001]\\s*`, "i");
+  return String(prompt || "").replace(marker, "").replace(/\s+/g, " ").trim();
+}
+
+function prPromptFromObject(item) {
+  const keys = [
+    "prompt", "description", "text", "content", "scene", "action",
+    "\u52a8\u6001\u63cf\u8ff0", "\u63cf\u8ff0", "\u63d0\u793a\u8bcd", "\u753b\u9762",
+  ];
+  for (const key of keys) {
+    if (item?.[key]) return String(item[key]).trim();
+  }
+  return Object.entries(item || {})
+    .filter(([key, value]) => value && !["shot", "shot_id", "index", "id", "number", "frames", "duration_frames", "length", "seconds", "duration"].includes(key))
+    .map(([, value]) => String(value).trim())
+    .join("\uff0c");
+}
+
+function prShotKeyIndex(key) {
+  const digit = String(key).match(/\d+/);
+  if (digit) return Number(digit[0]);
+  const numerals = "\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d";
+  for (let i = 0; i < numerals.length; i++) {
+    if (String(key).includes(numerals[i])) return i + 1;
+  }
+  return null;
+}
+
+function prMappingToList(data) {
+  const numbered = [];
+  for (const [key, value] of Object.entries(data || {})) {
+    const idx = prShotKeyIndex(key);
+    if (idx != null) numbered.push([idx, value]);
+  }
+  if (numbered.length) return numbered.sort((a, b) => a[0] - b[0]).map((item) => item[1]);
+  const values = Object.values(data || {});
+  if (values.length && values.every((value) => typeof value === "string" || typeof value === "object")) return values;
+  return null;
+}
+
+function prParsePrompts(text) {
+  const data = prFirstJson(text);
+  if (data) {
+    let items = data;
+    if (!Array.isArray(items) && typeof items === "object") {
+      let found = null;
+      for (const key of ["segments", "shots", "scenes", "storyboard", "\u5206\u955c", "\u955c\u5934"]) {
+        if (Array.isArray(items[key])) found = items[key];
+        else if (items[key] && typeof items[key] === "object") found = prMappingToList(items[key]);
+        if (found) break;
+      }
+      items = found || prMappingToList(items) || [items];
+    }
+    if (Array.isArray(items)) {
+      return items.map((item) => prCleanPrompt(typeof item === "string" ? item : prPromptFromObject(item))).filter(Boolean);
+    }
+  }
+
+  const stripped = prStripFence(text);
+  const numerals = "\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341";
+  const marker = new RegExp(`(?:^|\\n)\\s*(?:\\u5206\\u955c|\\u955c\\u5934|\\u753b\\u9762|shot)\\s*[${numerals}\\d]+\\s*[:\\uff1a.\\-\\u3001]\\s*`, "gi");
+  const matches = [...stripped.matchAll(marker)];
+  if (matches.length) {
+    return matches.map((match, idx) => {
+      const start = match.index + match[0].length;
+      const end = idx + 1 < matches.length ? matches[idx + 1].index : stripped.length;
+      return prCleanPrompt(stripped.slice(start, end));
+    }).filter(Boolean);
+  }
+  return stripped.split(/\n+/).map(prCleanPrompt).filter(Boolean);
+}
+
+function prCollectStrings(value, out = []) {
+  if (value == null) return out;
+  if (typeof value === "string") {
+    const text = value.trim();
+    if (text) out.push(text);
+    return out;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) prCollectStrings(item, out);
+    return out;
+  }
+  if (typeof value === "object") {
+    for (const item of Object.values(value)) prCollectStrings(item, out);
+  }
+  return out;
+}
+
+function prExtractTextFromExecutionOutput(output) {
+  if (!output) return "";
+  for (const key of ["response", "text", "string", "strings", "result", "message", "messages", "output"]) {
+    const values = prCollectStrings(output[key], []);
+    if (values.length) return values.join("\n").trim();
+  }
+  const values = prCollectStrings(output, [])
+    .filter((text) => !/^https?:\/\//i.test(text) && !/\.(png|jpg|jpeg|webp|wav|mp3|mp4)$/i.test(text));
+  if (!values.length) return "";
+  values.sort((a, b) => b.length - a.length);
+  return values[0].trim();
+}
+
+function prExecutionNodeId(detail) {
+  return String(detail?.node ?? detail?.node_id ?? detail?.nodeId ?? detail?.id ?? "");
+}
+
+function prParseNumberList(text) {
+  return String(text || "")
+    .split(/[,\\uFF0C|/\n]+/)
+    .map((part) => Number(part.trim()))
+    .filter((value) => Number.isFinite(value) && value > 0);
+}
+
+function prEvenLengths(totalFrames, count) {
+  const base = Math.floor(totalFrames / count);
+  const lengths = Array(count).fill(base);
+  for (let i = 0; i < totalFrames - base * count; i++) lengths[i % count] += 1;
+  return lengths.map((v) => Math.max(1, v));
+}
+
+function prResolveSegmentLengths(node, count, ignoreManual = false) {
+  const totalFrames = Math.max(count, Math.round(Number(prGetWidgetValue(node, "duration_frames", 120)) || 120));
+  const manual = ignoreManual ? [] : prParseNumberList(prGetWidgetValue(node, "segment_lengths", ""));
+  if (manual.length) {
+    const lengths = manual.slice(0, count).map((v) => Math.max(1, Math.round(v)));
+    while (lengths.length < count) lengths.push(1);
+    const diff = totalFrames - lengths.reduce((a, b) => a + b, 0);
+    lengths[lengths.length - 1] = Math.max(1, lengths[lengths.length - 1] + diff);
+    return lengths;
+  }
+  return prEvenLengths(totalFrames, count);
+}
+
+function prImageFromUrl(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    const sep = String(url).includes("?") ? "&" : "?";
+    img.src = `${url}${sep}_ltx_preview=${Date.now()}`;
+  });
+}
+
+function prSixGridSourceKey(source) {
+  if (!source?.url) return "";
+  return `${source.cols || 3}x${source.rows || 2}|${source.url}`;
+}
+
 // --- Data Models ---
 function parseInitial(jsonStr) {
   let parsed = { segments: [], audioSegments: [] };
@@ -561,6 +1261,10 @@ function parseInitial(jsonStr) {
     // Guarantee ID assignment to prevent node loading drag breaks
     if (!seg.id) {
       seg.id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+    }
+    if (seg.source === "storyboard_images") {
+      delete seg.imageB64;
+      delete seg.imgObj;
     }
   }
 
@@ -634,6 +1338,22 @@ class TimelineEditor {
     this.segmentLengthsWidget = this.node.widgets.find(w => w.name === "segment_lengths");
     this.guideStrengthWidget = this.node.widgets.find(w => w.name === "guide_strength");
     this.displayModeWidget = this.node.widgets.find(w => w.name === "display_mode");
+    this.llmResponseWidget = this.node.widgets.find(w => w.name === "llm_response");
+    this._lastLLMResponse = this.getCurrentLLMText();
+    this._lastLLMCheck = 0;
+    this._lastSixGridSourceKey = "";
+    this._lastSixGridCheck = 0;
+    this._lastSixGridInputKey = "";
+    this._lastGridCropKey = "";
+    this._sixGridAutoRefreshTimer = null;
+    this._sixGridAutoRefreshPending = false;
+    this._sixGridPendingSource = null;
+    this._sixGridPendingSourceKey = "";
+    this._sixGridRefreshInFlight = false;
+    this._sixGridPreviewImage = null;
+    this._sixGridPreviewSource = null;
+    this._sixGridPreviewSourceKey = "";
+    this._sixGridPreviewLoad = null;
 
     this.timeline = parseInitial(this.timelineDataWidget?.value);
     this.loadImages();
@@ -703,6 +1423,8 @@ class TimelineEditor {
       this.updateWidgetVisibility(); // Initial trigger
     }
 
+    this.attachLLMResponseListeners();
+
     // Polling is much more reliable in Comfy than ResizeObserver due to scale transforms
     this._renderLoop = requestAnimationFrame(() => this.checkResize());
   }
@@ -710,8 +1432,64 @@ class TimelineEditor {
   destroy() {
     cancelAnimationFrame(this._renderLoop);
     this.pauseAudio();
+    if (this._sixGridAutoRefreshTimer) clearTimeout(this._sixGridAutoRefreshTimer);
     window.removeEventListener("keydown", this.handleKeyDown, true);
     window.removeEventListener("paste", this.handlePaste, true);
+    if (this._onPromptExecuted) api.removeEventListener?.("executed", this._onPromptExecuted);
+    if (this._onExecutionSuccess) api.removeEventListener?.("execution_success", this._onExecutionSuccess);
+  }
+
+  attachLLMResponseListeners() {
+    if (!prIsSixGridDirector(this.node) || !api.addEventListener) return;
+    this._onPromptExecuted = (event) => {
+      const origin = prGetOriginNode(this.node, "llm_response");
+      if (!origin) return;
+      const detail = event?.detail || {};
+      if (prExecutionNodeId(detail) !== String(origin.id)) return;
+      const text = prExtractTextFromExecutionOutput(detail.output || detail.data?.output || detail);
+      if (text) this.receiveLLMResponseText(text);
+    };
+    this._onExecutionSuccess = async (event) => {
+      const origin = prGetOriginNode(this.node, "llm_response");
+      const promptId = event?.detail?.prompt_id || event?.detail?.promptId;
+      if (!origin || !promptId || !api.fetchApi) return;
+      try {
+        const response = await api.fetchApi(`/history/${promptId}`);
+        const history = await response.json();
+        const record = history?.[promptId] || Object.values(history || {})[0];
+        const output = record?.outputs?.[String(origin.id)] || record?.outputs?.[origin.id];
+        const text = prExtractTextFromExecutionOutput(output);
+        if (text) this.receiveLLMResponseText(text);
+      } catch (err) {
+        console.warn("[LTX Grid Director] Could not read LLM response from history:", err);
+      }
+    };
+    api.addEventListener("executed", this._onPromptExecuted);
+    api.addEventListener("execution_success", this._onExecutionSuccess);
+  }
+
+  receiveLLMResponseText(text) {
+    const cleanText = String(text || "").trim();
+    if (!cleanText) return;
+    this._lastLLMResponse = cleanText;
+    if (this.llmResponseWidget) this.llmResponseWidget.value = cleanText;
+    this.syncPromptsFromText(cleanText, { preserveManual: true, createMissing: true });
+  }
+
+  getCurrentLLMText() {
+    if (!prIsSixGridDirector(this.node)) return String(this.llmResponseWidget?.value || "");
+    return prGetConnectedInputText(this.node, "llm_response", this._lastLLMResponse || "");
+  }
+
+  checkConnectedLLMTextChange() {
+    if (!prIsSixGridDirector(this.node)) return;
+    const now = performance.now ? performance.now() : Date.now();
+    if (now - this._lastLLMCheck < 1000) return;
+    this._lastLLMCheck = now;
+
+    const text = this.getCurrentLLMText();
+    if (!text || text === this._lastLLMResponse) return;
+    this.receiveLLMResponseText(text);
   }
 
   getDurationFrames() {
@@ -723,7 +1501,7 @@ class TimelineEditor {
   }
 
   // Grow the timeline duration to fit `requiredFrames` if it is currently shorter.
-  // The timeline only ever grows — never shrinks — through this method.
+  // The timeline only ever grows -never shrinks -through this method.
   growTimelineIfNeeded(requiredFrames) {
     const current = this.getDurationFrames();
     if (requiredFrames <= current) return; // already big enough
@@ -756,8 +1534,8 @@ class TimelineEditor {
   }
 
   // Returns the visual timeline length in frames:
-  // the furthest segment end (across both tracks) × 1.30, with a floor of getDurationFrames().
-  // This is used for all rendering/positioning — the actual output duration is getDurationFrames().
+  // the furthest segment end (across both tracks) 脳 1.30, with a floor of getDurationFrames().
+  // This is used for all rendering/positioning -the actual output duration is getDurationFrames().
   getVisualDurationFrames() {
     let furthest = 0;
     for (const seg of this.timeline.segments) {
@@ -865,27 +1643,43 @@ class TimelineEditor {
 
     const uploadBtn = document.createElement("button");
     uploadBtn.className = "pr-btn";
-    uploadBtn.innerHTML = `${ICONS.upload} Add Image`;
+    uploadBtn.innerHTML = `${ICONS.upload} ${ZH.addImage}`;
     uploadBtn.addEventListener("click", () => this.fileInput.click());
+
+    const autoFillBtn = document.createElement("button");
+    autoFillBtn.className = "pr-btn";
+    autoFillBtn.innerHTML = `${ICONS.upload} ${ZH.autoFillGrid}`;
+    autoFillBtn.title = ZH.autoFillGridTitle;
+    autoFillBtn.addEventListener("click", () => this.autoFillFromSixGrid(false));
+
+    const syncTextBtn = document.createElement("button");
+    syncTextBtn.className = "pr-btn";
+    syncTextBtn.innerHTML = `${ICONS.text} ${ZH.syncText}`;
+    syncTextBtn.title = ZH.syncTextTitle;
+    syncTextBtn.addEventListener("click", () => this.syncPromptsFromCurrentLLM());
 
     const uploadAudioBtn = document.createElement("button");
     uploadAudioBtn.className = "pr-btn";
-    uploadAudioBtn.innerHTML = `${ICONS.audio} Add Audio`;
+    uploadAudioBtn.innerHTML = `${ICONS.audio} ${ZH.addAudio}`;
     uploadAudioBtn.addEventListener("click", () => this.audioFileInput.click());
 
     const addTextBtn = document.createElement("button");
     addTextBtn.className = "pr-btn";
-    addTextBtn.innerHTML = `${ICONS.text} Add Text`;
+    addTextBtn.innerHTML = `${ICONS.text} ${ZH.addText}`;
     addTextBtn.addEventListener("click", () => this.addTextSegmentFreeSpace());
 
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "pr-btn pr-btn-danger";
-    deleteBtn.innerHTML = `${ICONS.trash} Delete`;
+    deleteBtn.innerHTML = `${ICONS.trash} ${ZH.delete}`;
     deleteBtn.addEventListener("click", () => this.deleteSelectedSegment());
 
     actionGroup.appendChild(this.fileInput);
     actionGroup.appendChild(this.audioFileInput);
     actionGroup.appendChild(uploadBtn);
+    if (prIsSixGridDirector(this.node)) {
+      actionGroup.appendChild(autoFillBtn);
+      actionGroup.appendChild(syncTextBtn);
+    }
     actionGroup.appendChild(addTextBtn);
     actionGroup.appendChild(uploadAudioBtn);
     actionGroup.appendChild(deleteBtn);
@@ -896,7 +1690,7 @@ class TimelineEditor {
 
     this.segmentBoundsDisplay = document.createElement("div");
     this.segmentBoundsDisplay.className = "pr-segment-bounds";
-    this.segmentBoundsDisplay.textContent = "Start: - | End: -";
+    this.segmentBoundsDisplay.textContent = `${ZH.start}: - | ${ZH.end}: -`;
 
     this.timeCodeDisplay = document.createElement("div");
     this.timeCodeDisplay.className = "pr-timecode";
@@ -910,7 +1704,7 @@ class TimelineEditor {
     settingsBtn.style.height = "28px";
     settingsBtn.style.boxSizing = "border-box";
     settingsBtn.innerHTML = ICONS.gear;
-    settingsBtn.title = "Settings";
+    settingsBtn.title = ZH.settings;
     settingsBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       if (this._settingsMenu) {
@@ -925,11 +1719,11 @@ class TimelineEditor {
     toggleBtn.style.padding = "6px 8px";
     toggleBtn.style.fontSize = "11px";
     toggleBtn.style.marginRight = "0px";
-    toggleBtn.textContent = "Custom Audio: OFF";
-    toggleBtn.title = "Toggle Custom Audio Output";
+    toggleBtn.textContent = ZH.customAudioOff;
+    toggleBtn.title = ZH.toggleCustomAudio;
 
     const updateToggleStyle = (isOn) => {
-      toggleBtn.textContent = isOn ? "Custom Audio: ON" : "Custom Audio: OFF";
+      toggleBtn.textContent = isOn ? ZH.customAudioOn : ZH.customAudioOff;
       if (isOn) {
         toggleBtn.style.background = "#1c222d";
         toggleBtn.style.borderColor = "#283142";
@@ -967,7 +1761,7 @@ class TimelineEditor {
     helpBtn.style.height = "28px";
     helpBtn.style.boxSizing = "border-box";
     helpBtn.innerHTML = "?";
-    helpBtn.title = "Help / Documentation";
+    helpBtn.title = ZH.help;
     helpBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       window.open("https://github.com/codedad1983/WhatDreamsCost-ComfyUI", "_blank");
@@ -1025,10 +1819,13 @@ class TimelineEditor {
     // --- Text Area (Image/Text) ---
     this.promptInput = document.createElement("textarea");
     this.promptInput.className = "pr-prompt-area";
-    this.promptInput.placeholder = "Enter prompt for selected segment...";
+    this.promptInput.placeholder = ZH.promptPlaceholder;
     this.promptInput.addEventListener("input", () => {
       if (this.selectionType === "image" && this.timeline.segments[this.selectedIndex]) {
-        this.timeline.segments[this.selectedIndex].prompt = this.promptInput.value;
+        const seg = this.timeline.segments[this.selectedIndex];
+        seg.prompt = this.promptInput.value;
+        seg.promptSource = "manual";
+        seg.promptEdited = true;
         this.commitChanges();
       }
     });
@@ -1056,7 +1853,7 @@ class TimelineEditor {
       if (!this._ghostSegmentId || this._ghostTrack !== trackType) {
         this._ghostSegmentId = "GHOST_" + Date.now();
         this._ghostTrack = trackType;
-        this._ghostInitialTimeline = JSON.parse(JSON.stringify(arrToModify));
+        this._ghostInitialTimeline = prCloneTimelineForPreview(arrToModify);
 
         const frameRate = this.getFrameRate();
         const newLength = Math.max(1, frameRate * 1);
@@ -1150,14 +1947,14 @@ class TimelineEditor {
     this.playBtn.className = "pr-icon-btn";
     this.playBtn.style.padding = "4px";
     this.playBtn.innerHTML = ICONS.play;
-    this.playBtn.title = "Play/Pause Audio";
+    this.playBtn.title = ZH.playPauseAudio;
     this.playBtn.addEventListener("click", () => this.togglePlay());
 
     this.loopBtn = document.createElement("button");
     this.loopBtn.className = "pr-icon-btn";
     this.loopBtn.style.padding = "4px";
     this.loopBtn.innerHTML = ICONS.loop;
-    this.loopBtn.title = "Toggle Loop";
+    this.loopBtn.title = ZH.toggleLoop;
     this.loopBtn.addEventListener("click", () => this.toggleLoop());
 
     this.seekBar = document.createElement("input");
@@ -1182,7 +1979,7 @@ class TimelineEditor {
     zoomOutBtn.className = "pr-icon-btn";
     zoomOutBtn.style.padding = "4px";
     zoomOutBtn.innerHTML = ICONS.minus;
-    zoomOutBtn.title = "Zoom Out";
+    zoomOutBtn.title = ZH.zoomOut;
     zoomOutBtn.addEventListener("click", () => {
       const currentZoom = parseFloat(this.zoomSlider.value);
       this.zoomSlider.value = Math.max(1, currentZoom - 0.5);
@@ -1196,7 +1993,7 @@ class TimelineEditor {
     this.zoomSlider.max = "1"; // Updated dynamically via updateZoomSliderMax()
     this.zoomSlider.step = "0.1";
     this.zoomSlider.value = "1";
-    this.zoomSlider.title = "Zoom Level";
+    this.zoomSlider.title = ZH.zoomLevel;
     this.zoomSlider.addEventListener("input", (e) => {
       this.zoomLevel = parseFloat(e.target.value);
 
@@ -1219,7 +2016,7 @@ class TimelineEditor {
     zoomInBtn.className = "pr-icon-btn";
     zoomInBtn.style.padding = "4px";
     zoomInBtn.innerHTML = ICONS.plus;
-    zoomInBtn.title = "Zoom In";
+    zoomInBtn.title = ZH.zoomIn;
     zoomInBtn.addEventListener("click", () => {
       const currentZoom = parseFloat(this.zoomSlider.value);
       this.zoomSlider.value = Math.min(this.getMaxZoom(), currentZoom + 0.5);
@@ -1231,7 +2028,7 @@ class TimelineEditor {
     zoomFitBtn.style.padding = "4px";
     zoomFitBtn.style.marginLeft = "4px";
     zoomFitBtn.innerHTML = ICONS.fit;
-    zoomFitBtn.title = "Zoom to Fit (show full timeline)";
+    zoomFitBtn.title = ZH.zoomFit;
     zoomFitBtn.addEventListener("click", () => {
       this.zoomLevel = 1;
       this.zoomSlider.value = 1;
@@ -1261,7 +2058,7 @@ class TimelineEditor {
 
     const strengthLabel = document.createElement("span");
     strengthLabel.className = "pr-strength-label";
-    strengthLabel.textContent = "Guide Strength:";
+    strengthLabel.textContent = ZH.guideStrength;
 
     this.strengthValue = document.createElement("input");
     this.strengthValue.type = "text";
@@ -1360,6 +2157,9 @@ class TimelineEditor {
   checkResize() {
     const viewportWidth = this.viewport.clientWidth;
     const currentScale = this.getRenderScale();
+    this.checkSixGridSourceChange();
+    this.checkGridCropOptionChange();
+    this.checkConnectedLLMTextChange();
 
     if (viewportWidth > 0 && (this._lastWidth !== viewportWidth || this._lastZoom !== this.zoomLevel || this._lastScale !== currentScale)) {
       this._lastWidth = viewportWidth;
@@ -1371,6 +2171,142 @@ class TimelineEditor {
       this.resizeCanvas(newCanvasWidth);
     }
     this._renderLoop = requestAnimationFrame(() => this.checkResize());
+  }
+
+  checkSixGridSourceChange() {
+    if (!prIsSixGridDirector(this.node)) return;
+    const now = performance.now ? performance.now() : Date.now();
+    if (now - this._lastSixGridCheck < 1000) return;
+    this._lastSixGridCheck = now;
+
+    const source = prGetSixGridSource(this.node);
+    const sourceKey = prSixGridSourceKey(source);
+    if (!sourceKey) return;
+
+    this.ensureSixGridPreviewImage(source, sourceKey);
+    this.requestSixGridAutoRefresh("source", source, sourceKey);
+  }
+
+  checkGridCropOptionChange() {
+    if (!prIsSixGridDirector(this.node)) return;
+    const options = prGetShotCropOptions(this.node);
+    const key = [
+      options.targetRatio || "auto",
+      options.borderCropStrength.toFixed(3),
+    ].join("|");
+    if (key === this._lastGridCropKey) return;
+    this._lastGridCropKey = key;
+    this.render();
+  }
+
+  sixGridInputKey(source = null, sourceKey = "") {
+    source = source || prGetSixGridSource(this.node);
+    sourceKey = sourceKey || prSixGridSourceKey(source);
+    return sourceKey || "";
+  }
+
+  sixGridTimelineSourceState(sourceKey = "") {
+    const segments = (this.timeline?.segments || []).filter((seg) => seg?.source === "storyboard_images");
+    const keys = Array.from(new Set(
+      segments
+        .map((seg) => String(seg.storyboardPreviewKey || ""))
+        .filter(Boolean)
+    ));
+    return {
+      count: segments.length,
+      keys,
+      hasKnownSource: keys.length > 0,
+      matchesCurrent: !!sourceKey && keys.length > 0 && keys.every((key) => key === sourceKey),
+    };
+  }
+
+  requestSixGridAutoRefresh(reason = "input", source = null, sourceKey = "") {
+    if (!prIsSixGridDirector(this.node)) return false;
+    source = source || prGetSixGridSource(this.node);
+    sourceKey = sourceKey || prSixGridSourceKey(source);
+    if (!sourceKey) return false;
+
+    const inputKey = this.sixGridInputKey(source, sourceKey);
+    if (!inputKey || inputKey === this._lastSixGridInputKey) return false;
+
+    const sourceState = this.sixGridTimelineSourceState(sourceKey);
+    if (sourceState.count > 0 && sourceState.matchesCurrent) {
+      this._lastSixGridInputKey = inputKey;
+      this._lastSixGridSourceKey = sourceKey;
+      this.ensureSixGridPreviewImage(source, sourceKey);
+      this.refreshSixGridPreviews(source, sourceKey);
+      return false;
+    }
+    if (sourceState.count > 0 && !sourceState.hasKnownSource && (reason === "init" || reason === "source")) {
+      this._lastSixGridInputKey = inputKey;
+      this._lastSixGridSourceKey = sourceKey;
+      this.refreshSixGridPreviews(source, sourceKey);
+      return false;
+    }
+
+    this._lastSixGridInputKey = inputKey;
+    this._lastSixGridSourceKey = sourceKey;
+
+    if (this._sixGridRefreshInFlight) {
+      this._sixGridAutoRefreshPending = true;
+      this._sixGridPendingSource = source;
+      this._sixGridPendingSourceKey = sourceKey;
+      return true;
+    }
+
+    if (this._sixGridAutoRefreshTimer) clearTimeout(this._sixGridAutoRefreshTimer);
+    this._sixGridAutoRefreshTimer = setTimeout(async () => {
+      this._sixGridAutoRefreshTimer = null;
+      this._sixGridRefreshInFlight = true;
+      try {
+        await this.autoFillFromSixGrid(false);
+      } finally {
+        this._sixGridRefreshInFlight = false;
+        if (this._sixGridAutoRefreshPending) {
+          const pendingSource = this._sixGridPendingSource;
+          const pendingSourceKey = this._sixGridPendingSourceKey;
+          this._sixGridAutoRefreshPending = false;
+          this._sixGridPendingSource = null;
+          this._sixGridPendingSourceKey = "";
+          this._lastSixGridInputKey = "";
+          this.requestSixGridAutoRefresh(reason, pendingSource || source, pendingSourceKey || sourceKey);
+        }
+      }
+    }, 120);
+    return true;
+  }
+
+  async ensureSixGridPreviewImage(source = null, sourceKey = "") {
+    if (!prIsSixGridDirector(this.node)) return null;
+    source = source || prGetSixGridSource(this.node);
+    sourceKey = sourceKey || prSixGridSourceKey(source);
+    if (!source?.url || !sourceKey) return null;
+    if (this._sixGridPreviewImage && this._sixGridPreviewSourceKey === sourceKey) return this._sixGridPreviewImage;
+    if (this._sixGridPreviewLoad && this._sixGridPreviewSourceKey === sourceKey) return this._sixGridPreviewLoad;
+
+    this._sixGridPreviewSourceKey = sourceKey;
+    this._sixGridPreviewSource = source;
+    this._sixGridPreviewImage = null;
+    this._sixGridPreviewLoad = prImageFromUrl(source.url)
+      .then((img) => {
+        if (this._sixGridPreviewSourceKey === sourceKey) {
+          this._sixGridPreviewImage = img;
+          this._sixGridPreviewSource = source;
+          this.render();
+        }
+        return img;
+      })
+      .catch((err) => {
+        if (this._sixGridPreviewSourceKey === sourceKey) {
+          this._sixGridPreviewImage = null;
+        }
+        console.warn("[LTX Grid Director] Could not load grid preview image:", err);
+        return null;
+      })
+      .finally(() => {
+        if (this._sixGridPreviewSourceKey === sourceKey) this._sixGridPreviewLoad = null;
+      });
+    return this._sixGridPreviewLoad;
   }
 
   getRenderScale() {
@@ -1469,7 +2405,7 @@ class TimelineEditor {
               targetFrameStart = newStart + newLength; // For the next file in batch
             }
 
-            // Use the full intended length — the timeline has already been grown to fit.
+            // Use the full intended length -the timeline has already been grown to fit.
             let constrainedLength = newLength;
 
             const seg = {
@@ -1581,7 +2517,7 @@ class TimelineEditor {
             targetFrameStart = newStart + newLength;
           }
 
-          // Use the full clip length — timeline has already grown to fit.
+          // Use the full clip length -timeline has already grown to fit.
           let constrainedLength = newLength;
 
           const seg = {
@@ -1614,6 +2550,126 @@ class TimelineEditor {
     this.audioFileInput.value = "";
   }
 
+  async autoFillFromSixGrid(onlyIfEmpty = false) {
+    if (!prIsSixGridDirector(this.node)) return;
+
+    const source = prGetSixGridSource(this.node);
+    const sourceKey = prSixGridSourceKey(source);
+    const ignoreManualLengths = !onlyIfEmpty || this.timeline.segments.length === 0;
+    if (onlyIfEmpty && this.timeline.segments.length > 0) {
+      await this.refreshSixGridPreviews(source, sourceKey);
+      return;
+    }
+
+    const maxFromGrid = source ? Math.min(SIX_GRID_MAX_SEGMENTS, source.cols * source.rows) : SIX_GRID_MAX_SEGMENTS;
+    const count = Math.max(1, maxFromGrid);
+    const lengths = prResolveSegmentLengths(this.node, count, ignoreManualLengths);
+    const promptText = this.getCurrentLLMText();
+    const prompts = prParsePrompts(promptText);
+
+    await this.ensureSixGridPreviewImage(source, sourceKey);
+
+    let cursor = 0;
+    this.timeline.segments = [];
+    for (let idx = 0; idx < count; idx++) {
+      const length = lengths[idx] || 1;
+      this.timeline.segments.push({
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+        start: cursor,
+        length,
+        prompt: prompts[idx] || "",
+        promptSource: prompts[idx] ? "llm" : "auto",
+        promptEdited: false,
+        type: "image",
+        source: "storyboard_images",
+        batch_index: idx,
+        guideStrength: 1.0,
+        storyboardPreviewKey: sourceKey,
+      });
+      cursor += length;
+    }
+
+    this.selectionType = "image";
+    this.selectedIndex = this.timeline.segments.length > 0 ? 0 : -1;
+    this.loadImages();
+    this.updateUIFromSelection();
+    this.commitChanges(true);
+    this.render();
+  }
+
+  async refreshSixGridPreviews(source = null, sourceKey = "") {
+    source = source || prGetSixGridSource(this.node);
+    sourceKey = sourceKey || prSixGridSourceKey(source);
+    if (!source?.url || !sourceKey) return false;
+
+    try {
+      await this.ensureSixGridPreviewImage(source, sourceKey);
+      let changed = false;
+      for (let idx = 0; idx < this.timeline.segments.length; idx++) {
+        const seg = this.timeline.segments[idx];
+        if (!seg || seg.source !== "storyboard_images") continue;
+        if (seg.imageB64) {
+          delete seg.imageB64;
+          changed = true;
+        }
+        if (seg.storyboardPreviewKey !== sourceKey) {
+          seg.storyboardPreviewKey = sourceKey;
+          changed = true;
+        }
+      }
+      if (changed) {
+        this.commitChanges(true);
+      }
+      this.render();
+      return changed;
+    } catch (err) {
+      console.warn("[LTX Grid Director] Could not refresh grid preview images:", err);
+      return false;
+    }
+  }
+
+  async syncPromptsFromText(text, { preserveManual = true, createMissing = true } = {}) {
+    if (!prIsSixGridDirector(this.node)) return false;
+    const prompts = prParsePrompts(text);
+    if (!prompts.length) return false;
+
+    if (createMissing && this.timeline.segments.length === 0) {
+      if (this.llmResponseWidget) this.llmResponseWidget.value = String(text || "");
+      await this.autoFillFromSixGrid(true);
+    }
+
+    const count = Math.min(prompts.length, this.timeline.segments.length);
+    if (!count) return false;
+
+    let changed = false;
+    for (let idx = 0; idx < count; idx++) {
+      const seg = this.timeline.segments[idx];
+      if (!seg) continue;
+      const hasManualPrompt = seg.promptEdited || seg.promptSource === "manual";
+      const hasUntrackedPrompt = seg.prompt && !seg.promptSource;
+      if (preserveManual && (hasManualPrompt || hasUntrackedPrompt)) continue;
+      if (seg.prompt !== prompts[idx]) {
+        seg.prompt = prompts[idx];
+        changed = true;
+      }
+      seg.promptSource = "llm";
+      seg.promptEdited = false;
+      seg.llmIndex = idx;
+    }
+
+    if (!changed) return false;
+    this.loadImages();
+    this.updateUIFromSelection();
+    this.commitChanges(true);
+    this.render();
+    return true;
+  }
+
+  syncPromptsFromCurrentLLM() {
+    const text = this.getCurrentLLMText();
+    return this.syncPromptsFromText(text, { preserveManual: true, createMissing: true });
+  }
+
   deleteSelectedSegment() {
     if (this.selectionType === "audio") {
       if (this.timeline.audioSegments.length === 0 || this.selectedIndex === -1) return;
@@ -1630,16 +2686,16 @@ class TimelineEditor {
   }
 
   formatTime(frames, dropSuffix = false) {
-    const mode = this.displayModeWidget ? this.displayModeWidget.value : "seconds";
+    const mode = prNormalizeDisplayMode(this.displayModeWidget?.value);
     if (mode === "seconds") {
       const secs = frames / this.getFrameRate();
       return dropSuffix ? secs.toFixed(2) : secs.toFixed(2) + "s";
     }
-    return dropSuffix ? Math.round(frames).toString() : Math.round(frames) + " frames";
+    return dropSuffix ? Math.round(frames).toString() : Math.round(frames) + ZH.frameSuffix;
   }
 
   updateWidgetVisibility() {
-    const mode = this.displayModeWidget ? this.displayModeWidget.value : "seconds";
+    const mode = prNormalizeDisplayMode(this.displayModeWidget?.value);
 
     if (this.durationFramesWidget) {
       // Always visible regardless of display mode
@@ -1695,9 +2751,9 @@ class TimelineEditor {
       this.strengthRow.style.display = "flex";
       this.audioInfoArea.style.display = "block";
       this.audioInfoArea.innerHTML = `
-        File: <span>${seg.fileName || "Unknown"}</span><br>
-        Length: <span>${this.formatTime(seg.audioDurationFrames)}</span> Output Length: <span>${this.formatTime(seg.length)}</span><br>
-        Trim-in: <span>${this.formatTime(Math.round(seg.trimStart))}</span> Trim-Out: <span>${this.formatTime(Math.round(seg.audioDurationFrames - (seg.trimStart + seg.length)))}</span>
+        ${ZH.file}: <span>${seg.fileName || ZH.unknown}</span><br>
+        ${ZH.length}: <span>${this.formatTime(seg.audioDurationFrames)}</span> ${ZH.outputLength}: <span>${this.formatTime(seg.length)}</span><br>
+        ${ZH.trimIn}: <span>${this.formatTime(Math.round(seg.trimStart))}</span> ${ZH.trimOut}: <span>${this.formatTime(Math.round(seg.audioDurationFrames - (seg.trimStart + seg.length)))}</span>
       `;
       this.strengthValue.value = "1.00";
       this.strengthValue.disabled = true;
@@ -1726,14 +2782,59 @@ class TimelineEditor {
       if (seg) {
         const startStr = this.formatTime(seg.start, true);
         const endStr = this.formatTime(seg.start + seg.length, true);
-        this.segmentBoundsDisplay.textContent = `Start: ${startStr} | End: ${endStr}`;
+        this.segmentBoundsDisplay.textContent = `${ZH.start}: ${startStr} | ${ZH.end}: ${endStr}`;
       } else {
-        this.segmentBoundsDisplay.textContent = "Start: - | End: -";
+        this.segmentBoundsDisplay.textContent = `${ZH.start}: - | ${ZH.end}: -`;
       }
     }
   }
 
   // --- Rendering logic ---
+  drawSixGridStoryboardSegment(seg, startX, pxWidth) {
+    if (!prIsSixGridDirector(this.node) || seg?.source !== "storyboard_images") return false;
+    const img = this._sixGridPreviewImage;
+    const source = this._sixGridPreviewSource;
+    if (!img || !img.complete || img.naturalWidth <= 0 || !source?.cols || !source?.rows) {
+      this.ensureSixGridPreviewImage();
+      return false;
+    }
+
+    const idx = Number.isFinite(Number(seg.batch_index)) ? Number(seg.batch_index) : 0;
+    const cropOptions = prGetShotCropOptions(this.node);
+    const { sx, sy, sw, sh } = prGridCropBounds(
+      img.naturalWidth,
+      img.naturalHeight,
+      idx,
+      source.cols,
+      source.rows,
+      cropOptions.borderCropStrength,
+      cropOptions.targetRatio,
+    );
+    const imgRatio = sw / sh;
+    const boxRatio = pxWidth / this.blockHeight;
+    let drawW, drawH, drawX, drawY;
+
+    if (imgRatio > boxRatio) {
+      drawW = pxWidth;
+      drawH = pxWidth / imgRatio;
+      drawX = startX;
+      drawY = RULER_HEIGHT + (this.blockHeight - drawH) / 2;
+    } else {
+      drawH = this.blockHeight;
+      drawW = this.blockHeight * imgRatio;
+      drawY = RULER_HEIGHT;
+      drawX = startX + (pxWidth - drawW) / 2;
+    }
+
+    this.ctx.save();
+    this.ctx.beginPath();
+    this.ctx.rect(startX, RULER_HEIGHT + 1, pxWidth, this.blockHeight - 2);
+    this.ctx.clip();
+    this.ctx.drawImage(img, sx, sy, sw, sh, drawX, drawY, drawW, drawH);
+    this.ctx.restore();
+    return true;
+  }
+
   render() {
     const width = this.canvas.offsetWidth || this._lastWidth;
     const height = this.canvasHeight;
@@ -1815,13 +2916,15 @@ class TimelineEditor {
         this.ctx.textAlign = "center";
         this.ctx.textBaseline = "middle";
         this.ctx.font = "bold 12px sans-serif";
-        this.ctx.fillText("Drop to Place", startX + pxWidth / 2, RULER_HEIGHT + this.blockHeight / 2);
+        this.ctx.fillText(ZH.dropToPlace, startX + pxWidth / 2, RULER_HEIGHT + this.blockHeight / 2);
       } else {
         this.ctx.fillStyle = seg.type === "text" ? "#000b12" : "#000";
         this.ctx.fillRect(startX, RULER_HEIGHT + 1, pxWidth, this.blockHeight - 2);
       }
 
-      if (imgObj && imgObj.complete && imgObj.naturalWidth > 0 && seg.type !== "ghost") {
+      if (this.drawSixGridStoryboardSegment(seg, startX, pxWidth)) {
+        // Drawn directly from the shared grid source image.
+      } else if (imgObj && imgObj.complete && imgObj.naturalWidth > 0 && seg.type !== "ghost") {
         const imgRatio = imgObj.naturalWidth / imgObj.naturalHeight;
         const boxRatio = pxWidth / this.blockHeight;
         let drawW, drawH, drawX, drawY;
@@ -1840,10 +2943,10 @@ class TimelineEditor {
         this.ctx.clip();
 
         if (imgRatio > boxRatio) {
-          // Fits width, vertical letterboxing (black bars top/bottom) — keep as is
+          // Fits width, vertical letterboxing (black bars top/bottom) -keep as is
           this.ctx.drawImage(imgObj, drawX, drawY, drawW, drawH);
         } else {
-          // Fits height, horizontal letterboxing (black bars left/right) — tile horizontally
+          // Fits height, horizontal letterboxing (black bars left/right) -tile horizontally
           this.ctx.drawImage(imgObj, drawX, drawY, drawW, drawH);
 
           // Tile left
@@ -1887,10 +2990,10 @@ class TimelineEditor {
           const maxTextW = pxWidth - 10;
           let label = seg.prompt;
           if (this.ctx.measureText(label).width > maxTextW) {
-            while (label.length > 0 && this.ctx.measureText(label + "…").width > maxTextW) {
+            while (label.length > 0 && this.ctx.measureText(label + "...").width > maxTextW) {
               label = label.slice(0, -1);
             }
-            label += "…";
+            label += "...";
           }
 
           this.ctx.fillText(label, startX + pxWidth / 2, overlayY + overlayH / 2);
@@ -1908,7 +3011,7 @@ class TimelineEditor {
           this.ctx.font = "11px sans-serif";
           this.ctx.textAlign = "center";
           this.ctx.textBaseline = "top";
-          const label = seg.prompt || "(no prompt)";
+          const label = seg.prompt || ZH.noPrompt;
           const words = label.split(" ");
           const lineH = 15;
           let line = "";
@@ -1927,7 +3030,7 @@ class TimelineEditor {
           const maxLines = Math.max(1, Math.floor((this.blockHeight - pad * 2) / lineH));
           if (lines.length > maxLines) {
             lines = lines.slice(0, maxLines);
-            lines[lines.length - 1] += "…";
+            lines[lines.length - 1] += "...";
           }
 
           const totalTextHeight = lines.length * lineH;
@@ -1986,7 +3089,7 @@ class TimelineEditor {
         this.ctx.textAlign = "center";
         this.ctx.textBaseline = "middle";
         this.ctx.font = "bold 12px sans-serif";
-        this.ctx.fillText("Drop Audio", startX + pxWidth / 2, trackY + this.audioTrackHeight / 2);
+        this.ctx.fillText(ZH.dropAudio, startX + pxWidth / 2, trackY + this.audioTrackHeight / 2);
       } else {
         this.drawAudioSegmentVisuals(this.ctx, seg, isSelected, trackY, this.audioTrackHeight, startX, pxWidth);
       }
@@ -2005,7 +3108,7 @@ class TimelineEditor {
     this.ctx.font = "10px sans-serif";
 
     const frameRate = this.getFrameRate();
-    const mode = this.displayModeWidget ? this.displayModeWidget.value : "seconds";
+    const mode = prNormalizeDisplayMode(this.displayModeWidget?.value);
 
     // Define logical steps for both modes
     let steps;
@@ -2222,7 +3325,7 @@ class TimelineEditor {
     ctx.rect(startX, yOffset + 2, pxWidth, trackHeight - 3);
     ctx.clip();
 
-    let text = seg.fileName || "Audio Track";
+    let text = seg.fileName || ZH.audioTrack;
     const maxWidth = pxWidth - 12;
     if (ctx.measureText(text).width > maxWidth && maxWidth > 0) {
       while (text.length > 0 && ctx.measureText(text + "...").width > maxWidth) {
@@ -2420,7 +3523,7 @@ class TimelineEditor {
     this._isDragging = true;
     this._previewSegments = null;
     this._dragStartX = x;
-    this._dragInitialTimeline = JSON.parse(JSON.stringify(targetArray));
+    this._dragInitialTimeline = prCloneTimelineForPreview(targetArray);
 
     if (hit.type !== "joint") {
       this._dragTargetId = targetArray[hit.index].id;
@@ -2552,7 +3655,7 @@ class TimelineEditor {
     const durationFrames = totalFrames;
     const dragDelta = Math.round((mouseX - this._dragStartX) * (totalFrames / logicalWidth));
 
-    let t = JSON.parse(JSON.stringify(this._dragInitialTimeline));
+    let t = prCloneTimelineForPreview(this._dragInitialTimeline);
 
     // --- Rolling Edit (Slide Edit) ---
     if (this._dragType === "joint") {
@@ -2632,7 +3735,7 @@ class TimelineEditor {
         let initT = this._dragInitialTimeline;
         let dIdx = initT.findIndex(s => s.id === this._dragTargetId);
         if (dIdx < 0) return;
-        let D = JSON.parse(JSON.stringify(initT[dIdx]));
+        let D = { ...initT[dIdx] };
 
         let D_mouse_start = D.start + dragDelta;
         let mouseFrameX = mouseX * (totalFrames / logicalWidth);
@@ -2647,7 +3750,7 @@ class TimelineEditor {
   }
 
   _applyCenterDragPhysics(initT, D_id, D_mouse_start, mouseFrameX, durationFrames, totalFrames, logicalWidth) {
-    let t_copy = JSON.parse(JSON.stringify(initT));
+    let t_copy = prCloneTimelineForPreview(initT);
     let dIdx = t_copy.findIndex(s => s.id === D_id);
     if (dIdx < 0) return t_copy;
 
@@ -2776,7 +3879,7 @@ class TimelineEditor {
       if (seg.start >= durationFrames) break;
 
       if (seg.start > currentCursor) {
-        // Gap between the cursor and this segment — clip it at the cutoff too.
+        // Gap between the cursor and this segment -clip it at the cutoff too.
         const gapLength = Math.min(seg.start, durationFrames) - currentCursor;
         if (contiguousLengths.length > 0) {
           contiguousLengths[contiguousLengths.length - 1] += gapLength;
@@ -2802,10 +3905,7 @@ class TimelineEditor {
     }
 
     const toSave = {
-      segments: sortedSegments.map(s => {
-        const { imgObj, ...rest } = s;
-        return rest;
-      }),
+      segments: sortedSegments.map(prSegmentForTimelineSave),
       audioSegments: (this.timeline.audioSegments || []).map(s => ({ ...s }))
     };
 
@@ -2952,7 +4052,7 @@ class TimelineEditor {
     if (isImage) {
       const copyBtn = document.createElement("button");
       copyBtn.className = "pr-gap-menu-btn";
-      copyBtn.innerHTML = `Copy Image`;
+      copyBtn.innerHTML = ZH.copyImage;
       copyBtn.onclick = async () => {
         try {
           const res = await fetch(seg.imageB64);
@@ -2967,7 +4067,7 @@ class TimelineEditor {
 
       const saveBtn = document.createElement("button");
       saveBtn.className = "pr-gap-menu-btn";
-      saveBtn.innerHTML = `Save Image`;
+      saveBtn.innerHTML = ZH.saveImage;
       saveBtn.onclick = () => {
         const a = document.createElement("a");
         a.href = seg.imageB64;
@@ -2979,7 +4079,7 @@ class TimelineEditor {
 
       const openBtn = document.createElement("button");
       openBtn.className = "pr-gap-menu-btn";
-      openBtn.innerHTML = `Open Image in New Tab`;
+      openBtn.innerHTML = ZH.openImage;
       openBtn.onclick = () => {
         const win = window.open();
         if (win) {
@@ -2994,7 +4094,7 @@ class TimelineEditor {
     if (trackType !== "audio") {
       const copyPromptBtn = document.createElement("button");
       copyPromptBtn.className = "pr-gap-menu-btn";
-      copyPromptBtn.innerHTML = `Copy Prompt`;
+      copyPromptBtn.innerHTML = ZH.copyPrompt;
       copyPromptBtn.onclick = async () => {
         try {
           await navigator.clipboard.writeText(seg.prompt || "");
@@ -3008,7 +4108,7 @@ class TimelineEditor {
 
     const copySegBtn = document.createElement("button");
     copySegBtn.className = "pr-gap-menu-btn";
-    copySegBtn.innerHTML = `Copy Segment`;
+    copySegBtn.innerHTML = ZH.copySegment;
     copySegBtn.onclick = () => {
       this._copiedSegment = { ...seg, id: Date.now().toString() + Math.random().toString(36).substr(2, 5) };
       this._copiedSegmentTrack = trackType === "audio" ? "audio" : "image";
@@ -3020,7 +4120,7 @@ class TimelineEditor {
     if (this._copiedSegment && this._copiedSegmentTrack === currentTrack) {
       const pasteReplaceBtn = document.createElement("button");
       pasteReplaceBtn.className = "pr-gap-menu-btn";
-      pasteReplaceBtn.innerHTML = `Paste & Replace`;
+      pasteReplaceBtn.innerHTML = ZH.pasteReplace;
       pasteReplaceBtn.onclick = () => {
         const newSeg = {
           ...this._copiedSegment,
@@ -3039,7 +4139,7 @@ class TimelineEditor {
 
     const delBtn = document.createElement("button");
     delBtn.className = "pr-gap-menu-btn";
-    delBtn.innerHTML = `Delete`;
+    delBtn.innerHTML = ZH.delete;
     delBtn.style.color = "#ff4444";
     delBtn.onclick = () => {
       this.selectionType = trackType === "audio" ? "audio" : "image";
@@ -3071,7 +4171,7 @@ class TimelineEditor {
     if (this._copiedSegment && this._copiedSegmentTrack === currentTrack) {
       const pasteBtn = document.createElement("button");
       pasteBtn.className = "pr-gap-menu-btn";
-      pasteBtn.innerHTML = `Paste Segment`;
+      pasteBtn.innerHTML = ZH.pasteSegment;
       pasteBtn.onclick = () => {
         const startFrame = Math.round(gap.clickedFrame !== undefined ? gap.clickedFrame : gap.frameStart);
         const gapLength = gap.frameEnd - startFrame;
@@ -3094,7 +4194,7 @@ class TimelineEditor {
     if (currentTrack === "image") {
       const textBtn = document.createElement("button");
       textBtn.className = "pr-gap-menu-btn";
-      textBtn.innerHTML = `${ICONS.text} Text Segment`;
+      textBtn.innerHTML = `${ICONS.text} ${ZH.textSegment}`;
       textBtn.onclick = () => {
         this.addSegmentInGap(gap.frameStart, gap.frameEnd, "text");
         this.dismissContextMenu();
@@ -3103,7 +4203,7 @@ class TimelineEditor {
 
       const imgBtn = document.createElement("button");
       imgBtn.className = "pr-gap-menu-btn";
-      imgBtn.innerHTML = `${ICONS.upload} Image Segment`;
+      imgBtn.innerHTML = `${ICONS.upload} ${ZH.imageSegment}`;
       imgBtn.onclick = () => {
         this.dismissContextMenu();
         const fi = document.createElement("input");
@@ -3141,7 +4241,7 @@ class TimelineEditor {
 
     const textBtn = document.createElement("button");
     textBtn.className = "pr-gap-menu-btn";
-    textBtn.innerHTML = `${ICONS.text} Text Segment`;
+    textBtn.innerHTML = `${ICONS.text} ${ZH.textSegment}`;
     textBtn.addEventListener("click", () => {
       this.addSegmentInGap(gap.frameStart, gap.frameEnd, "text");
       this.dismissGapMenu();
@@ -3149,7 +4249,7 @@ class TimelineEditor {
 
     const imgBtn = document.createElement("button");
     imgBtn.className = "pr-gap-menu-btn";
-    imgBtn.innerHTML = `${ICONS.upload} Image Segment`;
+    imgBtn.innerHTML = `${ICONS.upload} ${ZH.imageSegment}`;
     imgBtn.addEventListener("click", () => {
       this.dismissGapMenu();
       const fi = document.createElement("input");
@@ -3169,7 +4269,7 @@ class TimelineEditor {
     if (this._copiedSegment && this._copiedSegmentTrack === currentTrack) {
       const pasteBtn = document.createElement("button");
       pasteBtn.className = "pr-gap-menu-btn";
-      pasteBtn.innerHTML = `Paste Segment`;
+      pasteBtn.innerHTML = ZH.pasteSegment;
       pasteBtn.onclick = () => {
         const gapLength = gap.frameEnd - gap.frameStart;
 
@@ -3235,7 +4335,7 @@ class TimelineEditor {
     // Workaround: toggle display mode to force ComfyUI to refresh the node
     if (this.displayModeWidget) {
       const origVal = this.displayModeWidget.value;
-      const otherVal = origVal === "frames" ? "seconds" : "frames";
+      const otherVal = prDisplayModeValue(prNormalizeDisplayMode(origVal) === "frames" ? "seconds" : "frames");
 
       this.displayModeWidget.value = otherVal;
       if (this.displayModeWidget.callback) this.displayModeWidget.callback(otherVal);
@@ -3266,7 +4366,7 @@ class TimelineEditor {
     // Workaround: toggle display mode to force ComfyUI to refresh the node
     if (this.displayModeWidget) {
       const origVal = this.displayModeWidget.value;
-      const otherVal = origVal === "frames" ? "seconds" : "frames";
+      const otherVal = prDisplayModeValue(prNormalizeDisplayMode(origVal) === "frames" ? "seconds" : "frames");
 
       this.displayModeWidget.value = otherVal;
       if (this.displayModeWidget.callback) this.displayModeWidget.callback(otherVal);
@@ -3300,13 +4400,13 @@ class TimelineEditor {
     titleContainer.style.alignItems = "center";
 
     const titleText = document.createElement("span");
-    titleText.textContent = "Timeline Settings";
+    titleText.textContent = ZH.timelineSettings;
     titleContainer.appendChild(titleText);
 
     const closeBtn = document.createElement("button");
     closeBtn.className = "pr-settings-close-btn";
     closeBtn.innerHTML = ICONS.close;
-    closeBtn.title = "Close Settings";
+    closeBtn.title = ZH.closeSettings;
     closeBtn.addEventListener("click", () => this.dismissSettingsMenu());
     titleContainer.appendChild(closeBtn);
 
@@ -3329,14 +4429,14 @@ class TimelineEditor {
 
       const framesSeg = document.createElement("div");
       framesSeg.className = "pr-segment";
-      framesSeg.textContent = "Frames";
+      framesSeg.textContent = ZH.frames;
 
       const secondsSeg = document.createElement("div");
       secondsSeg.className = "pr-segment";
-      secondsSeg.textContent = "Seconds";
+      secondsSeg.textContent = ZH.seconds;
 
       const updateActive = (val) => {
-        if (val === "frames") {
+        if (prNormalizeDisplayMode(val) === "frames") {
           framesSeg.classList.add("active");
           secondsSeg.classList.remove("active");
         } else {
@@ -3348,7 +4448,7 @@ class TimelineEditor {
       updateActive(dmWidget.value);
 
       const onSegClick = (val) => {
-        fireCallback(dmWidget, val);
+        fireCallback(dmWidget, prDisplayModeValue(val));
         updateActive(val);
         // Update ruler/timecode immediately
         if (this.updateWidgetVisibility) this.updateWidgetVisibility();
@@ -3362,7 +4462,7 @@ class TimelineEditor {
       ctrl.appendChild(secondsSeg);
       ctrl.appendChild(framesSeg);
 
-      menu.appendChild(this._makeSettingRow("Display Mode", ctrl));
+      menu.appendChild(this._makeSettingRow(ZH.displayMode, ctrl));
     }
 
     const divider1 = document.createElement("hr");
@@ -3471,19 +4571,19 @@ class TimelineEditor {
     // --- Epsilon ---
     const epsWidget = this.node.widgets?.find(w => w.name === "epsilon");
     if (epsWidget) {
-      menu.appendChild(this._makeSettingRow("Epsilon", createScrubbableNumberControl(epsWidget, 0.0001, 0.0001, 0.99, true)));
+      menu.appendChild(this._makeSettingRow(ZH.epsilon, createScrubbableNumberControl(epsWidget, 0.0001, 0.0001, 0.99, true)));
     }
 
     // --- Divisible By ---
     const divByWidget = this.node.widgets?.find(w => w.name === "divisible_by");
     if (divByWidget) {
-      menu.appendChild(this._makeSettingRow("Divisible By", createScrubbableNumberControl(divByWidget, 1, 1, 256, false)));
+      menu.appendChild(this._makeSettingRow(ZH.divisibleBy, createScrubbableNumberControl(divByWidget, 1, 1, 256, false)));
     }
 
     // --- Img Compression ---
     const compWidget = this.node.widgets?.find(w => w.name === "img_compression");
     if (compWidget) {
-      menu.appendChild(this._makeSettingRow("Img Compression", createScrubbableNumberControl(compWidget, 1, 0, 100, false)));
+      menu.appendChild(this._makeSettingRow(ZH.imgCompression, createScrubbableNumberControl(compWidget, 1, 0, 100, false)));
     }
 
     // --- Global Prompt Toggle ---
@@ -3511,14 +4611,14 @@ class TimelineEditor {
         // Force refresh via display mode double-toggle trick
         if (this.displayModeWidget) {
           const origVal = this.displayModeWidget.value;
-          const otherVal = origVal === "frames" ? "seconds" : "frames";
+          const otherVal = prDisplayModeValue(prNormalizeDisplayMode(origVal) === "frames" ? "seconds" : "frames");
           this.displayModeWidget.value = otherVal;
           if (this.displayModeWidget.callback) this.displayModeWidget.callback(otherVal);
           this.displayModeWidget.value = origVal;
           if (this.displayModeWidget.callback) this.displayModeWidget.callback(origVal);
         }
       });
-      menu.appendChild(this._makeSettingRow("Use Global Prompt", cb));
+      menu.appendChild(this._makeSettingRow(ZH.useGlobalPrompt, cb));
     }
 
 
@@ -3526,15 +4626,15 @@ class TimelineEditor {
     const toggleBtn = document.createElement("button");
     toggleBtn.className = "pr-settings-toggle-btn";
     const widgetsVisible = !!(this.node.widgets?.find(w => w.name === "display_mode" && !(w.options && w.options.hidden)));
-    toggleBtn.textContent = widgetsVisible ? "Hide Widgets on Node" : "Show Widgets on Node";
+    toggleBtn.textContent = widgetsVisible ? ZH.hideWidgets : ZH.showWidgets;
     toggleBtn.addEventListener("click", () => {
       const nowVisible = !!(this.node.widgets?.find(w => w.name === "display_mode" && !(w.options && w.options.hidden)));
       if (nowVisible) {
         this.hideSettingsWidgets();
-        toggleBtn.textContent = "Show Widgets on Node";
+        toggleBtn.textContent = ZH.showWidgets;
       } else {
         this.showSettingsWidgets();
-        toggleBtn.textContent = "Hide Widgets on Node";
+        toggleBtn.textContent = ZH.hideWidgets;
       }
     });
     menu.appendChild(toggleBtn);
@@ -3782,22 +4882,23 @@ const APPENDED_WIDGET_DEFAULTS = [
 ];
 
 app.registerExtension({
-  name: "LTXDirector",
+  name: "LTXDirectorWithGridImageV2",
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
-    if (nodeData.name === "LTXDirector") {
+    if (nodeData.name === "LTXDirectorWithGridImageV2" || SIX_GRID_NODE_TYPES.includes(nodeData.name)) {
 
       const onNodeCreated = nodeType.prototype.onNodeCreated;
       nodeType.prototype.onNodeCreated = function () {
         if (onNodeCreated) onNodeCreated.apply(this, arguments);
+
+        prApplySixGridChineseLabels(this);
+        prRepairSixGridWidgetValues(this);
 
         for (const [name, def] of APPENDED_WIDGET_DEFAULTS) {
           if (!this.widgets?.find(w => w.name === name)) {
             this.addWidget("string", name, def, () => { });
           }
         }
-        for (const w of this.widgets) {
-          if (HIDDEN_WIDGET_NAMES.includes(w.name)) hideWidget(w);
-        }
+        prHideSixGridInternalWidgets(this);
 
         // Set default width to be wider on creation (approx 2.5x default ~220px)
         this.size[0] = 1000;
@@ -3820,6 +4921,9 @@ app.registerExtension({
           }, 0);
         }
 
+        prApplySixGridChineseLabels(this);
+        prRepairSixGridWidgetValues(this);
+
         const container = document.createElement("div");
         const widget = this.addDOMWidget("timeline_ui", "timeline_ui", container, {
           getValue: () => "",
@@ -3835,6 +4939,9 @@ app.registerExtension({
         setTimeout(() => {
           try {
             self._timelineEditor = new TimelineEditor(self, container, widget);
+            if (prIsSixGridDirector(self)) {
+              setTimeout(() => self._timelineEditor?.requestSixGridAutoRefresh("init"), 250);
+            }
           } catch (err) {
             console.error("[PromptRelay] timeline editor init failed:", err);
           }
@@ -3850,12 +4957,18 @@ app.registerExtension({
       const onConfigure = nodeType.prototype.onConfigure;
       nodeType.prototype.onConfigure = function (info) {
         const out = onConfigure?.apply(this, arguments);
+        prApplySixGridChineseLabels(this);
+        prRepairSixGridWidgetValues(this);
         for (const [name, def] of APPENDED_WIDGET_DEFAULTS) {
           const w = this.widgets.find(x => x.name === name);
           if (w && (w.value == null || w.value === "")) w.value = def;
         }
+        prHideSixGridInternalWidgets(this);
 
         setTimeout(() => {
+          prApplySixGridChineseLabels(this);
+          prRepairSixGridWidgetValues(this);
+          prHideSixGridInternalWidgets(this);
           if (this._timelineEditor) {
             this._timelineEditor.timeline = parseInitial(this._timelineEditor.timelineDataWidget?.value);
             this._timelineEditor.loadImages();

@@ -7,6 +7,8 @@ from .load_video_ui import LoadVideoUI
 from .ltx_director import LTXDirector
 from .ltx_director_with_reference_image import LTXDirectorWithReferenceImage
 from .ltx_director_with_more_output import LTXDirectorWithMoreOutput
+from .ltx_director_with_grid_image import LTXDirectorWithGridImage
+from .ltx_director_with_grid_image_v2 import LTXDirectorWithGridImageV2
 from .ltx_director_guide import LTXDirectorGuide
 from .latent_slice import CleanLatentSlice
 from comfy_api.latest import ComfyExtension, io
@@ -19,6 +21,8 @@ class PromptRelay(ComfyExtension):
             LTXDirector,
             LTXDirectorWithReferenceImage,
             LTXDirectorWithMoreOutput,
+            LTXDirectorWithGridImage,
+            LTXDirectorWithGridImageV2,
             LTXDirectorGuide
         ]
 
@@ -35,6 +39,8 @@ NODE_CLASS_MAPPINGS = {
     "LTXDirector": LTXDirector,
     "LTXDirectorWithReferenceImage": LTXDirectorWithReferenceImage,
     "LTXDirectorWithMoreOutput": LTXDirectorWithMoreOutput,
+    "LTXDirectorWithGridImage": LTXDirectorWithGridImage,
+    "LTXDirectorWithGridImageV2": LTXDirectorWithGridImageV2,
     "LTXDirectorGuide": LTXDirectorGuide,
     "CleanLatentSlice": CleanLatentSlice,
 }
@@ -49,6 +55,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LTXDirector": "LTX Director",
     "LTXDirectorWithReferenceImage": "LTX Director With Reference Image",
     "LTXDirectorWithMoreOutput": "LTX Director With More Output",
+    "LTXDirectorWithGridImage": "LTX Director With Grid Image",
+    "LTXDirectorWithGridImageV2": "LTX Director With Grid Image V2",
     "LTXDirectorGuide": "LTX Director Guide",
     "CleanLatentSlice": "Clean Latent Slice",
 }
