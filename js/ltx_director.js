@@ -2656,6 +2656,176 @@ class TimelineEditor {
       this.render();
     });
 
+    this.isSnapping = this.node.properties.isSnapping !== false;
+
+    const snapBtn = document.createElement("button");
+    snapBtn.className = "pr-btn";
+    snapBtn.style.padding = "6px";
+    snapBtn.style.display = "flex";
+    snapBtn.style.alignItems = "center";
+    snapBtn.style.justifyContent = "center";
+    snapBtn.style.width = "28px";
+    snapBtn.style.height = "28px";
+    snapBtn.style.boxSizing = "border-box";
+    snapBtn.innerHTML = ICONS.magnet;
+
+    const updateSnapStyle = () => {
+      snapBtn.title = this.isSnapping ? "Disable Snapping (Magnet)" : "Enable Snapping (Magnet)";
+      if (this.isSnapping) {
+        snapBtn.classList.add("toggle-on");
+      } else {
+        snapBtn.classList.remove("toggle-on");
+      }
+    };
+    this.updateSnapStyle = updateSnapStyle;
+    updateSnapStyle();
+
+    snapBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.isSnapping = !this.isSnapping;
+      this.node.properties.isSnapping = this.isSnapping;
+      updateSnapStyle();
+      this.commitChanges();
+      this.render();
+    });
+
+    const startBtn = document.createElement("button");
+    startBtn.className = "pr-btn";
+    startBtn.style.padding = "6px";
+    startBtn.style.display = "flex";
+    startBtn.style.alignItems = "center";
+    startBtn.style.justifyContent = "center";
+    startBtn.style.width = "28px";
+    startBtn.style.height = "28px";
+    startBtn.style.boxSizing = "border-box";
+    startBtn.innerHTML = ICONS.start;
+    startBtn.title = "Set Start Frame";
+    startBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (this.retakeMode) return;
+      if (this.startFramesWidget) {
+        this.startFramesWidget.value = this.currentFrame;
+        if (this.startFramesWidget.callback) {
+          this.startFramesWidget.callback(this.currentFrame);
+        }
+        this.commitChanges();
+        this.render();
+      }
+    });
+
+    const endBtn = document.createElement("button");
+    endBtn.className = "pr-btn";
+    endBtn.style.padding = "6px";
+    endBtn.style.display = "flex";
+    endBtn.style.alignItems = "center";
+    endBtn.style.justifyContent = "center";
+    endBtn.style.width = "28px";
+    endBtn.style.height = "28px";
+    endBtn.style.boxSizing = "border-box";
+    endBtn.innerHTML = ICONS.end;
+    endBtn.title = "Set End Frame";
+    endBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (this.retakeMode) return;
+      if (this.endFramesWidget) {
+        this.endFramesWidget.value = this.currentFrame;
+        if (this.endFramesWidget.callback) {
+          this.endFramesWidget.callback(this.currentFrame);
+        }
+        this.commitChanges();
+        this.render();
+      }
+    });
+
+    const markBtn = document.createElement("button");
+    markBtn.className = "pr-btn";
+    markBtn.style.padding = "6px";
+    markBtn.style.display = "flex";
+    markBtn.style.alignItems = "center";
+    markBtn.style.justifyContent = "center";
+    markBtn.style.width = "28px";
+    markBtn.style.height = "28px";
+    markBtn.style.boxSizing = "border-box";
+    markBtn.innerHTML = ICONS.mark;
+    markBtn.title = "Mark Selection (X)";
+    markBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (this.retakeMode) return;
+      this.markCurrentSelection();
+    });
+
+    const retakeToggleBtn = document.createElement("button");
+    retakeToggleBtn.className = "pr-btn";
+    retakeToggleBtn.style.padding = "4px 8px";
+    retakeToggleBtn.style.display = "flex";
+    retakeToggleBtn.style.alignItems = "center";
+    retakeToggleBtn.style.justifyContent = "center";
+    retakeToggleBtn.style.gap = "6px";
+    retakeToggleBtn.style.height = "28px";
+    retakeToggleBtn.style.boxSizing = "border-box";
+    retakeToggleBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> <span>Retake Mode (BETA)</span>`;
+
+    const updateRetakeStyle = () => {
+      retakeToggleBtn.title = this.retakeMode ? "Switch to Multi-Clip Timeline" : "Switch to Retake Tab";
+      if (this.retakeMode) {
+        retakeToggleBtn.classList.add("toggle-on");
+      } else {
+        retakeToggleBtn.classList.remove("toggle-on");
+      }
+    };
+    this.updateRetakeStyle = updateRetakeStyle;
+    updateRetakeStyle();
+
+    retakeToggleBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      
+      // Stop and mute any active playback first
+      this.pauseAudio();
+      
+      // Save current input value to the mode we are EXITING
+      if (this.retakeMode) {
+        this.timeline.retake_global_prompt = this.globalPromptInput ? this.globalPromptInput.value : "";
+      } else {
+        this.timeline.global_prompt = this.globalPromptInput ? this.globalPromptInput.value : "";
+        // Backup normal mode values before entering Retake Mode
+        this.timeline.normalStartFrame = this.getStartFrames();
+        this.timeline.normalDurationFrames = this.getDurationFrames();
+      }
+
+      this.retakeMode = !this.retakeMode;
+      this.timeline.retakeMode = this.retakeMode;
+      if (this.node.properties) {
+        this.node.properties.retakeMode = this.retakeMode;
+      }
+
+      // Adjust widgets for the new mode
+      if (this.retakeMode) {
+        if (this.timeline.retakeVideo && this.timeline.retakeVideo.videoDurationFrames) {
+          this.syncWidgetsToRetakeDuration(this.timeline.retakeVideo.videoDurationFrames);
+        }
+      } else {
+        // Restore normal mode backup
+        this._suppressCommit = true;
+        if (this.timeline.normalStartFrame !== undefined && this.startFramesWidget) {
+          this.startFramesWidget.value = this.timeline.normalStartFrame;
+          if (this.startFramesWidget.callback) {
+            try { this.startFramesWidget.callback(this.timeline.normalStartFrame); } catch (_) {}
+          }
+        }
+        if (this.timeline.normalDurationFrames !== undefined && this.durationFramesWidget) {
+          this.durationFramesWidget.value = this.timeline.normalDurationFrames;
+          if (this.durationFramesWidget.callback) {
+            try { this.durationFramesWidget.callback(this.timeline.normalDurationFrames); } catch (_) {}
+          }
+        }
+        this._suppressCommit = false;
+      }
+
+      this.updateRetakeUIState();
+      this.commitChanges();
+      this.render();
+    });
+
     const btnGroup = document.createElement("div");
     btnGroup.style.display = "flex";
     btnGroup.style.gap = "6px";
