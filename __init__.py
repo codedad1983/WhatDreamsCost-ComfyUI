@@ -5,11 +5,11 @@ from .speech_length_calculator import SpeechLengthCalculator
 from .load_audio_ui import LoadAudioUI
 from .load_video_ui import LoadVideoUI
 from .ltx_director import LTXDirector
+from .ltx_director_guide import LTXDirectorGuide, LTXDirectorCropGuides
 from .ltx_director_with_reference_image import LTXDirectorWithReferenceImage
 from .ltx_director_with_more_output import LTXDirectorWithMoreOutput
 from .ltx_director_with_grid_image import LTXDirectorWithGridImage
 from .ltx_director_with_grid_image_v2 import LTXDirectorWithGridImageV2
-from .ltx_director_guide import LTXDirectorGuide
 from .latent_slice import CleanLatentSlice
 from comfy_api.latest import ComfyExtension, io
 from typing_extensions import override
@@ -37,11 +37,12 @@ NODE_CLASS_MAPPINGS = {
     "LoadAudioUI": LoadAudioUI,
     "LoadVideoUI": LoadVideoUI,
     "LTXDirector": LTXDirector,
+    "LTXDirectorGuide": LTXDirectorGuide,
+    "LTXDirectorCropGuides": LTXDirectorCropGuides,
     "LTXDirectorWithReferenceImage": LTXDirectorWithReferenceImage,
     "LTXDirectorWithMoreOutput": LTXDirectorWithMoreOutput,
     "LTXDirectorWithGridImage": LTXDirectorWithGridImage,
     "LTXDirectorWithGridImageV2": LTXDirectorWithGridImageV2,
-    "LTXDirectorGuide": LTXDirectorGuide,
     "CleanLatentSlice": CleanLatentSlice,
 }
 
@@ -53,11 +54,12 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LoadAudioUI": "Load Audio UI",
     "LoadVideoUI": "Load Video UI",
     "LTXDirector": "LTX Director",
+    "LTXDirectorGuide": "LTX Director Guide",
+    "LTXDirectorCropGuides": "LTX Director Crop Guides",
     "LTXDirectorWithReferenceImage": "LTX Director With Reference Image",
     "LTXDirectorWithMoreOutput": "LTX Director With More Output",
     "LTXDirectorWithGridImage": "LTX Director With Grid Image",
     "LTXDirectorWithGridImageV2": "LTX Director With Grid Image V2",
-    "LTXDirectorGuide": "LTX Director Guide",
     "CleanLatentSlice": "Clean Latent Slice",
 }
 
